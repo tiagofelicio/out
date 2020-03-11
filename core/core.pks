@@ -1,4 +1,4 @@
-create or replace package core authid current_user is
+create or replace package out.core authid current_user is
 
     debug boolean;
 
