@@ -88,18 +88,18 @@ row store compress advanced
 nologging
 noparallel;
 
-@@java/OUTTools.pls
+@@/java/OUTTools.pls
 
-@@packages/core.pks
-@@packages/core.pkb
-@@packages/internal.pks
-@@packages/internal.pkb
-@@packages/data_integration.pks
-@@packages/data_integration.pkb
-@@packages/tools.pks
-@@packages/tools.pkb
+@@/packages/core.pks
+@@/packages/core.pkb
+@@/packages/internal.pks
+@@/packages/internal.pkb
+@@/packages/data_integration.pks
+@@/packages/data_integration.pkb
+@@/packages/tools.pks
+@@/packages/tools.pkb
 
-@@procedures/bind.pls
-@@procedures/debug.pls
-@@procedures/dump.pls
-@@procedures/process.pls
+@@/procedures/bind.pls
+@@/procedures/debug.pls
+@@/procedures/dump.pls
+@@/procedures/process.pls
