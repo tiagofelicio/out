@@ -7,3 +7,4 @@ create or replace package out.tools authid current_user is
     procedure shell(command varchar2);
 
 end tools;
+/

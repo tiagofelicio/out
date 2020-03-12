@@ -11,3 +11,4 @@ create or replace package out.internal authid definer is
     function tools_shell_output_separator return varchar2;
 
 end internal;
+/

@@ -12,3 +12,4 @@ begin
         raise_application_error(-20000, 'Unsupported bind.');
     end if;
 end bind;
+/

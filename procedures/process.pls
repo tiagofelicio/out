@@ -9,3 +9,4 @@ begin
     process_name := lower(who_called_me_owner || '.' || who_called_me_name);
     internal.log_session(process_name, lower(status), options);
 end process;
+/

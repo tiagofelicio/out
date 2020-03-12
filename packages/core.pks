@@ -17,3 +17,4 @@ create or replace package out.core authid current_user is
     procedure dump;
 
 end core;
+/

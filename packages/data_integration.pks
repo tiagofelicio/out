@@ -13,3 +13,4 @@ create or replace package out.data_integration authid current_user is
     procedure incremental_update(target_table_name varchar2, source_table_name varchar2, options varchar2);
 
 end data_integration;
+/

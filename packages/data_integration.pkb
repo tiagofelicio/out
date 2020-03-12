@@ -685,3 +685,4 @@ create or replace package body out.data_integration is
     ----------------------------------------------------------------------------------------------------------------------------
 
 end data_integration;
+/
