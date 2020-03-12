@@ -2,14 +2,14 @@
 -- File Name     : install.sql
 -- Author        : tiago felicio
 -- Description   :
--- Call Syntax   : @install.sql (password) (default-tablespace) (temporary-tablespace)
+-- Call Syntax   : @install.sql (base-folder) (password) (default-tablespace) (temporary-tablespace)
 -- Last Modified : 2020/03/12
 -- -----------------------------------------------------------------------------------
 
-create user out identified by &1
-default tablespace &2
-temporary tablespace &3
-quota unlimited on &2;
+create user out identified by &2
+default tablespace &3
+temporary tablespace &4
+quota unlimited on &3;
 
 grant connect to out;
 grant resource to out;
@@ -88,18 +88,18 @@ row store compress advanced
 nologging
 noparallel;
 
-@./out/java/OUTTools.pls
+@&1/out/java/OUTTools.pls
 
-@./out/packages/core.pks
-@./out/packages/core.pkb
-@./out/packages/internal.pks
-@./out/packages/internal.pkb
-@./out/packages/data_integration.pks
-@./out/packages/data_integration.pkb
-@./out/packages/tools.pks
-@./out/packages/tools.pkb
+@&1/out/packages/core.pks
+@&1/out/packages/core.pkb
+@&1/out/packages/internal.pks
+@&1/out/packages/internal.pkb
+@&1/out/packages/data_integration.pks
+@&1/out/packages/data_integration.pkb
+@&1/out/packages/tools.pks
+@&1/out/packages/tools.pkb
 
-@./out/procedures/bind.pls
-@./out/procedures/debug.pls
-@./out/procedures/dump.pls
-@./out/procedures/process.pls
+@&1/out/procedures/bind.pls
+@&1/out/procedures/debug.pls
+@&1/out/procedures/dump.pls
+@&1/out/procedures/process.pls
