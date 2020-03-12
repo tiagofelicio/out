@@ -3,7 +3,7 @@
 -- Author        : tiago felicio
 -- Description   :
 -- Call Syntax   : @install.sql (password) (default-tablespace) (temporary-tablespace)
--- Last Modified : 2020/01/14
+-- Last Modified : 2020/03/12
 -- -----------------------------------------------------------------------------------
 
 create user out identified by &1
@@ -39,7 +39,7 @@ create table out.sessions (
     name varchar2(500 byte),
     begin date,
     end date,
-    duration number generated always as (round((nvl(end, sysdate) - begin) * 24 * 60 * 60)) virtual,
+    duration number generated always as (round((end - begin) * 24 * 60 * 60)) virtual,
     status varchar2(1 byte),
     username varchar2(100 byte),
     work number,
@@ -57,7 +57,7 @@ create table out.session_steps (
     name varchar2(500 byte),
     begin date,
     end date,
-    duration number generated always as (round((nvl(end, sysdate) - begin) * 24 * 60 * 60)) virtual,
+    duration number generated always as (round((end - begin) * 24 * 60 * 60)) virtual,
     status varchar2(1 byte),
     work number,
     error varchar2(4000 byte),
@@ -75,7 +75,7 @@ create table out.session_step_tasks (
     no number,
     begin date,
     end date,
-    duration number generated always as (round((nvl(end, sysdate) - begin) * 24 * 60 * 60)) virtual,
+    duration number generated always as (round((end - begin) * 24 * 60 * 60)) virtual,
     status varchar2(1 byte),
     work number,
     text varchar2(4000 byte),
@@ -88,18 +88,18 @@ row store compress advanced
 nologging
 noparallel;
 
-@@/java/OUTTools.pls
+@@./java/OUTTools.pls
 
-@@/packages/core.pks
-@@/packages/core.pkb
-@@/packages/internal.pks
-@@/packages/internal.pkb
-@@/packages/data_integration.pks
-@@/packages/data_integration.pkb
-@@/packages/tools.pks
-@@/packages/tools.pkb
+@@./packages/core.pks
+@@./packages/core.pkb
+@@./packages/internal.pks
+@@./packages/internal.pkb
+@@./packages/data_integration.pks
+@@./packages/data_integration.pkb
+@@./packages/tools.pks
+@@./packages/tools.pkb
 
-@@/procedures/bind.pls
-@@/procedures/debug.pls
-@@/procedures/dump.pls
-@@/procedures/process.pls
+@@./procedures/bind.pls
+@@./procedures/debug.pls
+@@./procedures/dump.pls
+@@./procedures/process.pls
