@@ -43,5 +43,5 @@ public class OUTTools {
         return exitValue + SHELL_OUTPUT_SEPARATOR() + stdout.toString() + SHELL_OUTPUT_SEPARATOR() + stderr.toString();
     }
 
-}
+};
 /
