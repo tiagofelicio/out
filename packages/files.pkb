@@ -13,7 +13,7 @@ create or replace package body out.files is
         solved_text := core.solve(text);
         case lower(property_name)
             when 'directory flag' then
-                directory_flag := case when lower(solved_text) = 'true' then '-r' end;
+                directory_flag := case when lower(solved_text) = 'true' then '-R' end;
                 property_value := directory_flag;
             when 'force flag' then
                 force_flag := case when lower(solved_text) = 'true' then '-f' end;
@@ -29,8 +29,24 @@ create or replace package body out.files is
     ----------------------------------------------------------------------------------------------------------------------------
 
     procedure copy(target_filename varchar2, source_filename varchar2, options varchar2 default null) is
+        command core.string_t;
+        output core.string_t;
     begin
-        null;
+        internal.log_session_step('start');
+        command := q'[
+            cp $directory_flag $force_flag $source_filename $target_filename
+        ]';
+        core.bind('$', 'source_filename', source_filename);
+        core.bind('$', 'target_filename', target_filename);
+        core.bind('$', 'directory_flag', get_property('directory flag', core.get_option('directory', options)));
+        core.bind('$', 'force_flag', get_property('force flag', core.get_option('force', options)));
+        output := core.shell(command);
+        core.unbind('$');
+        internal.log_session_step('done');
+    exception
+        when others then
+            core.unbind('$');
+            internal.log_session_step('error', sqlerrm);
     end copy;
 
     procedure move(target_filename varchar2, source_filename varchar2, options varchar2 default null) is
