@@ -5,12 +5,15 @@ create or replace package body metadata.examples is
     -- landing zone
     landing_zone constant text := '/home/oracle';
 
-    -- data hub
-    dh_api_url constant text := 'https://datahub.io';
-
     procedure data_integration_test is
     begin
-        null;
+        out.process('start');
+        out.bind('landing_zone', macro => landing_zone);
+        
+        out.process('done');
+    exception
+        when others then
+            out.process('error', sqlerrm);
     end data_integration_test;
 
     procedure files_test is
@@ -18,23 +21,29 @@ create or replace package body metadata.examples is
         null;
     end files_test;
 
-    procedure dh_country_codes is
+    procedure utilities_test is
     begin
         out.process('start');
-        out.bind('dh_api_url', macro => dh_api_url);
         out.bind('landing_zone', macro => landing_zone);
-        out.bind('dh_library', macro => 'core');
-        out.bind('dh_resource', macro => 'country-codes');
-        out.tools.shell('curl -L "#dh_api_url/#dh_library/#dh_resource/r/0.csv" > #landing_zone/#dh_resource.csv');
-        out.files.copy('#landing_zone/#dh_resource_1.csv', '#landing_zone/#dh_resource.csv');
-        out.files.copy('#landing_zone/test_2', '#landing_zone/test', q'[
-            directory => true
-        ]');
+        out.utilities.shell('touch #landing_zone/file_1.txt');
+        out.utilities.shell('echo "line 1" > #landing_zone/file_2.txt');
+        out.utilities.shell('echo "line 2" >> #landing_zone/file_2.txt');
+        out.utilities.shell('echo "line 3" >> #landing_zone/file_2.txt');
+        out.utilities.shell('echo "line 4" >> #landing_zone/file_2.txt');
+        out.utilities.shell('mkdir -p #landing_zone/folder1/folder2/folder3');
+        dbms_output.put_line('ls #landing_zone ->' || out.utilities.shell('ls #landing_zone'));
+        dbms_output.put_line('cat #landing_zone/file_1.txt ->' || out.utilities.shell('cat #landing_zone/file_1.txt'));
+        dbms_output.put_line('cat #landing_zone/file_2.txt ->' || out.utilities.shell('cat #landing_zone/file_2.txt'));
+        dbms_output.put_line('ls #landing_zone/folder1/folder2 ->' || out.utilities.shell('ls #landing_zone/folder1/folder2/folder3'));
+        dbms_output.put_line('cat #landing_zone/aaa.txt (ignore errors) ->' || out.utilities.shell('cat #landing_zone/aaa.txt', q'[
+            ignore errors => true
+        ]'));
+        out.utilities.shell('rm -rf #landing_zone/*');
         out.process('done');
     exception
         when others then
             out.process('error', sqlerrm);
-    end dh_country_codes;
+    end utilities_test;
 
 end examples;
 /
