@@ -30,7 +30,8 @@ grant execute on out.debug to metadata;
 grant execute on out.dump to metadata;
 grant execute on out.process to metadata;
 grant execute on out.data_integration to metadata;
-grant execute on out.tools to metadata;
+grant execute on out.files to metadata;
+grant execute on out.utilities to metadata;
 
 create user stage identified by &2
 default tablespace &4
