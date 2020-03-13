@@ -187,11 +187,11 @@ create or replace package body out.internal is
         end case;
     end log_session_step_task;
 
-    function tools_shell(command varchar2) return varchar2 is
+    function shell(command varchar2) return varchar2 is
     language java
     name 'OUTTools.shell(java.lang.String) return java.lang.String';
 
-    function tools_shell_output_separator return varchar2 is
+    function shell_output_separator return varchar2 is
     language java
     name 'OUTTools.SHELL_OUTPUT_SEPARATOR() return java.lang.String';
 

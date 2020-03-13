@@ -74,6 +74,37 @@ create or replace package body out.core is
         return option_boolean_value;
     end get_option;
 
+    function shell(command varchar2, log boolean default true) return varchar2 is
+        exit_value pls_integer;
+        output core.string_t;
+        solved_command core.string_t;
+        stderr core.string_t;
+        stdout core.string_t;
+    begin
+        solved_command := core.solve(command);
+        if log then
+            internal.log_session_step_task('start', solved_command);
+        end if;
+        output := internal.shell(solved_command);
+        exit_value := to_number(regexp_substr(output, '(^|' || internal.shell_output_separator || ')([^' || internal.shell_output_separator || ']*)', 1, 1, null, 2));
+        stderr := regexp_substr(output, '(^|' || internal.shell_output_separator || ')([^' || internal.shell_output_separator || ']*)', 1, 3, null, 2);
+        stdout := regexp_substr(output, '(^|' || internal.shell_output_separator || ')([^' || internal.shell_output_separator || ']*)', 1, 2, null, 2);
+        if exit_value <> 0 then
+            raise_application_error(-20000, stderr);
+        end if;
+        if log then
+            internal.log_session_step_task('done');
+        end if;
+        return stdout;
+    exception
+        when others then
+            if log then
+                internal.log_session_step_task('error', sqlerrm);
+            else
+                raise;
+            end if;
+    end shell;
+
     function solve(text varchar2) return varchar2 is
         solved_text string_t;
         internal_variable_name string_t;

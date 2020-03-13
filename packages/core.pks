@@ -12,6 +12,8 @@ create or replace package out.core authid current_user is
 
     function get_option(option_name varchar2, options varchar2, defaul_value boolean) return boolean;
 
+    function shell(command varchar2, log boolean default true) return varchar2;
+
     function solve(text varchar2) return varchar2;
 
     procedure dump;

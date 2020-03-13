@@ -1,39 +1,8 @@
-create or replace package body out.tools is
+create or replace package body out.files is
 
     ----------------------------------------------------------------------------------------------------------------------------
     ----------------------------------------------------------------------------------------------------------------------------
     ----------------------------------------------------------------------------------------------------------------------------
-
-    function execute(command varchar2, log boolean default true) return varchar2 is
-        exit_value pls_integer;
-        output core.string_t;
-        solved_command core.string_t;
-        stderr core.string_t;
-        stdout core.string_t;
-    begin
-        solved_command := core.solve(command);
-        if log then
-            internal.log_session_step_task('start', solved_command);
-        end if;
-        output := core.shell(solved_command);
-        exit_value := to_number(regexp_substr(output, '(^|' || internal.shell_output_separator || ')([^' || internal.shell_output_separator || ']*)', 1, 1, null, 2));
-        stderr := regexp_substr(output, '(^|' || internal.shell_output_separator || ')([^' || internal.shell_output_separator || ']*)', 1, 3, null, 2);
-        stdout := regexp_substr(output, '(^|' || internal.shell_output_separator || ')([^' || internal.shell_output_separator || ']*)', 1, 2, null, 2);
-        if exit_value <> 0 then
-            raise_application_error(-20000, stderr);
-        end if;
-        if log then
-            internal.log_session_step_task('done');
-        end if;
-        return stdout;
-    exception
-        when others then
-            if log then
-                internal.log_session_step_task('error', sqlerrm);
-            else
-                raise;
-            end if;
-    end execute;
 
     function get_property(property_name varchar2, text varchar2) return varchar2 is
         property_value core.string_t;
@@ -59,7 +28,17 @@ create or replace package body out.tools is
     ----------------------------------------------------------------------------------------------------------------------------
     ----------------------------------------------------------------------------------------------------------------------------
 
-    procedure remove_file(filename varchar2, options varchar2 default null) is
+    procedure copy(target_filename varchar2, source_filename varchar2, options varchar2 default null) is
+    begin
+        null;
+    end copy;
+
+    procedure move(target_filename varchar2, source_filename varchar2, options varchar2 default null) is
+    begin
+        null;
+    end move;
+
+    procedure remove(filename varchar2, options varchar2 default null) is
         command core.string_t;
         output core.string_t;
     begin
@@ -77,36 +56,36 @@ create or replace package body out.tools is
         when others then
             core.unbind('$');
             internal.log_session_step('error', sqlerrm);
-    end remove_file;
+    end remove;
 
-    function shell(command varchar2, options varchar2 default null) return clob is
-        output core.string_t;
+    procedure wait(filename varchar2, options varchar2) is
     begin
-        output := core.shell(command, log => false);
-        return output;
-    exception
-        when others then
-            if core.get_option('ignore errors', options, false) then
-                return null;
-            else
-                raise;
-            end if;
-    end shell;
+        null;
+    end wait;
 
-    procedure shell(command varchar2) is
-        output core.string_t;
+    procedure load(table_name varchar2, filename varchar2, attributes varchar2, options varchar2) is
     begin
-        internal.log_session_step('start');
-        output := core.shell(command);
-        internal.log_session_step('done');
-    exception
-        when others then
-            internal.log_session_step('error', sqlerrm);
-    end shell;
+        null;
+    end load;
+
+    procedure unload(filename varchar2, table_name varchar2, options varchar2) is
+    begin
+        null;
+    end unload;
+
+    procedure zip(archive_name varchar2, filename varchar2, options varchar2) is
+    begin
+        null;
+    end zip;
+
+    procedure unzip(filename varchar2, archive_name varchar2, options varchar2) is
+    begin
+        null;
+    end unzip;
 
     ----------------------------------------------------------------------------------------------------------------------------
     ----------------------------------------------------------------------------------------------------------------------------
     ----------------------------------------------------------------------------------------------------------------------------
 
-end tools;
+end files;
 /
