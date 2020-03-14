@@ -124,8 +124,79 @@ create or replace package body out.files is
     end load;
 
     procedure unload(filename varchar2, table_name varchar2, options varchar2) is
+        buffer varchar2(32767);
+        file utl_file.file_type;
+        table_description dbms_sql.desc_tab2;
+        table_column_count pls_integer;
+        table_cursor pls_integer;
+        table_rows_count pls_integer;
+        -- heading numero de linhas 
+        -- record separator \r\n ou \n
+        -- field separator pipe
+        -- text delimiter "
+        -- decimal delimiter . ou ,
+        field_separator core.string_t := '|';
+        l_is_str BOOLEAN;
     begin
-        null;
+        table_cursor := dbms_sql.open_cursor;
+        dbms_sql.parse(table_cursor, 'select * from ' || table_name, dbms_sql.native);
+        dbms_sql.describe_columns2(table_cursor, table_column_count, table_description);
+        for i in 1 .. table_column_count loop
+            dbms_sql.define_column(table_cursor, i, buffer, 32767);
+        end loop;
+        table_rows_count := dbms_sql.execute(table_cursor);
+        file := utl_file.fopen('O_DH_COUNTRY_CODES_01', filename, 'w', 32767);
+        -- output header
+        for i in 1 .. table_column_count loop
+            if i > 1 then
+                utl_file.put(file, field_separator);
+            end if;
+            utl_file.put(file, table_description(i).col_name);
+        end loop;
+        utl_file.new_line(file);
+        -- output data
+        loop
+            exit when dbms_sql.fetch_rows(table_cursor) = 0;
+            for i in 1 .. table_column_count loop
+                if i > 1 then
+                    utl_file.put(file, field_separator);
+                end if;
+                -- Check if this is a string column.
+                l_is_str := false;
+                if table_description(i).col_type in (
+                    dbms_types.typecode_char,
+                    dbms_types.typecode_clob,
+                    dbms_types.typecode_nchar,
+                    dbms_types.typecode_nclob,
+                    dbms_types.typecode_nvarchar2,
+                    dbms_types.typecode_varchar,
+                    dbms_types.typecode_varchar2
+                ) then
+                    l_is_str := true;
+                end if;
+                dbms_sql.column_value(table_cursor, i, buffer);
+                -- optionally add quotes for strings
+                if true and l_is_str then
+                    utl_file.put(file, '"');
+                    utl_file.put(file, buffer);
+                    utl_file.put(file, '"');
+                else
+                    utl_file.put(file, buffer);
+                end if;
+            end loop;
+            utl_file.new_line(file);
+        end loop;
+        utl_file.fclose(file);
+        dbms_sql.close_cursor(table_cursor);
+    exception
+        when others then
+            if utl_file.is_open(file) then
+                utl_file.fclose(file);
+            end if;
+            if dbms_sql.is_open(table_cursor) then
+                dbms_sql.close_cursor(table_cursor);
+            end if;
+            raise;
     end unload;
 
     procedure zip(archive_name varchar2, filename varchar2, options varchar2 default null) is
