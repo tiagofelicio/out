@@ -8,8 +8,19 @@ create or replace package body metadata.examples is
     procedure data_integration_test is
     begin
         out.process('start');
-        out.bind('landing_zone', macro => landing_zone);
-        
+        out.data_integration.create_table('stage.t1', q'[
+            select *
+            from all_users
+        ]');
+        out.data_integration.check_unique_key('stage.t1', 'username');
+        out.data_integration.create_table('stage.t2', q'[
+            select *
+            from all_users
+            where 1 = 0
+        ]');
+        out.data_integration.incremental_update('stage.t2', 'stage.t1', q'[
+            natural key => username
+        ]');
         out.process('done');
     exception
         when others then

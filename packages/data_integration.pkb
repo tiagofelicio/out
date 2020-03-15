@@ -4,61 +4,9 @@ create or replace package body out.data_integration is
     ----------------------------------------------------------------------------------------------------------------------------
     ----------------------------------------------------------------------------------------------------------------------------
 
-    type statement_t is record (
-        code core.string_t,
-        execute boolean default true,
-        ignore_error number
-    );
-
-    type statements_t is table of statement_t index by pls_integer;
-
-    function execute(statement statement_t) return number is
-        result number;
-        solved_statement core.string_t;
-    begin
-        if statement.execute then
-            solved_statement := core.solve(statement.code);
-            internal.log_session_step_task('start', solved_statement);
-            execute immediate solved_statement into result;
-            internal.log_session_step_task('done');
-        end if;
-        return result;
-    exception
-        when others then
-            internal.log_session_step_task('error', sqlerrm);
-    end execute;
-
-    procedure execute(statements statements_t) is
-        solved_statement core.string_t;
-        statement statement_t;
-        work number;
-    begin
-        for i in statements.first .. statements.last loop
-            statement := statements(i);
-            if statement.execute then
-                solved_statement := core.solve(statement.code);
-                begin
-                    internal.log_session_step_task('start', solved_statement);
-                    execute immediate solved_statement;
-                    work := sql%rowcount;
-                    commit;
-                    internal.log_session_step_task('done', work => work);
-                exception
-                    when others then
-                        rollback;
-                        if statement.ignore_error is null or statement.ignore_error <> sqlcode then
-                            internal.log_session_step_task('error', sqlerrm);
-                        else
-                            internal.log_session_step_task('warning', sqlerrm);
-                        end if;
-                end;
-            end if;
-        end loop;
-    end execute;
-
     function get_columns(table_name varchar2, start_text varchar2 default null, pattern varchar2 default null, separator varchar2 default null, columns_in varchar2 default null, columns_not_in varchar2 default null, remove_last_occurence varchar2 default null) return varchar2 is
-        statement core.string_t;
-        columns_list core.string_t;
+        statement core.text_t;
+        columns_list core.text_t;
         columns_name_cursor sys_refcursor;
         column_name all_tab_columns.column_name%type;
     begin
@@ -102,21 +50,21 @@ create or replace package body out.data_integration is
     end get_columns;
 
     function get_property(property_name varchar2, text varchar2) return varchar2 is
-        property_value core.string_t;
-        solved_text core.string_t;
-        analyze_partition_clause core.string_t;
+        property_value core.text_t;
+        solved_text core.text_t;
+        analyze_partition_clause core.text_t;
         directory_name all_directories.directory_name%type;
         directory_path all_directories.directory_path%type;
-        external_table_columns_definition core.string_t;
-        external_table_name core.string_t;
-        field_delimiter_clause core.string_t;
-        filename core.string_t;
-        filename_with_path core.string_t;
-        integration_table_01_name core.string_t;
-        integration_table_02_name core.string_t;
-        integration_table_03_name core.string_t;
+        external_table_columns_definition core.text_t;
+        external_table_name core.text_t;
+        field_delimiter_clause core.text_t;
+        filename core.text_t;
+        filename_with_path core.text_t;
+        integration_table_01_name core.text_t;
+        integration_table_02_name core.text_t;
+        integration_table_03_name core.text_t;
         lob_column_name all_tab_columns.column_name%type;
-        partition_clause core.string_t;
+        partition_clause core.text_t;
         table_owner_name all_tables.owner%type;
         table_short_name all_tables.table_name%type;
     begin
@@ -189,7 +137,7 @@ create or replace package body out.data_integration is
     ----------------------------------------------------------------------------------------------------------------------------
 
     procedure check_unique_key(table_name varchar2, columns_name varchar2) is
-        statement statement_t;
+        statement core.statement_t;
         duplicated_keys number;
     begin
         internal.log_session_step('start');
@@ -204,7 +152,7 @@ create or replace package body out.data_integration is
         ]';
         core.bind('$', 'columns_name', columns_name);
         core.bind('$', 'table_name', table_name);
-        duplicated_keys := execute(statement);
+        core.plsql(statement, duplicated_keys);
         if duplicated_keys <> 0 then
             raise_application_error(-20000, core.solve('Found ' || to_char(duplicated_keys) || ' duplicated keys in table $table_name using ' || columns_name || ' as key.'));
         end if;
@@ -217,7 +165,7 @@ create or replace package body out.data_integration is
     end check_unique_key;
 
     procedure create_table(table_name varchar2, statement varchar2) is
-        statements statements_t;
+        statements core.statements_t;
     begin
         internal.log_session_step('start');
         statements(1).code := q'[
@@ -246,7 +194,7 @@ create or replace package body out.data_integration is
         core.bind('$', 'table_name', table_name);
         core.bind('$', 'table_owner_name', get_property('table owner name', table_name));
         core.bind('$', 'table_short_name', get_property('table short name', table_name));
-        execute(statements);
+        core.plsql(statements);
         core.unbind('$');
         internal.log_session_step('done');
     exception
@@ -256,7 +204,7 @@ create or replace package body out.data_integration is
     end create_table;
 
     procedure create_table(table_name varchar2, statement varchar2, options varchar2) is
-        statements statements_t;
+        statements core.statements_t;
     begin
         internal.log_session_step('start');
         case core.get_option('type', options)
@@ -334,7 +282,7 @@ create or replace package body out.data_integration is
                 core.bind('$', 'table_name', table_name);
                 core.bind('$', 'table_owner_name', get_property('table owner name', table_name));
                 core.bind('$', 'table_short_name', get_property('table short name', table_name));
-                execute(statements);
+                core.plsql(statements);
             when 'file 2 lob' then
                 statements(1).code := q'[
                     drop directory $directory_name
@@ -406,7 +354,7 @@ create or replace package body out.data_integration is
                 core.bind('$', 'table_name', table_name);
                 core.bind('$', 'table_owner_name', get_property('table owner name', table_name));
                 core.bind('$', 'table_short_name', get_property('table short name', table_name));
-                execute(statements);
+                core.plsql(statements);
             else
                 raise_application_error(-20000, 'Unsupported type ' || core.get_option('type', options) || '.');
         end case;
@@ -419,14 +367,14 @@ create or replace package body out.data_integration is
     end create_table;
 
     procedure drop_table(table_name varchar2) is
-        statements statements_t;
+        statements core.statements_t;
     begin
         internal.log_session_step('start');
         statements(1).code := q'[
             drop table $table_name purge
         ]';
         core.bind('$', 'table_name', table_name);
-        execute(statements);
+        core.plsql(statements);
         core.unbind('$');
         internal.log_session_step('done');
     exception
@@ -436,7 +384,7 @@ create or replace package body out.data_integration is
     end drop_table;
 
     procedure control_append(target_table_name varchar2, source_table_name varchar2, options varchar2) is
-        statements statements_t;
+        statements core.statements_t;
     begin
         internal.log_session_step('start');
         statements(1).code := q'[
@@ -477,7 +425,7 @@ create or replace package body out.data_integration is
         core.bind('$', 'source_table_name', source_table_name);
         core.bind('$', 'target_table_owner_name', get_property('table owner name', target_table_name));
         core.bind('$', 'target_table_short_name', get_property('table short name', target_table_name));
-        execute(statements);
+        core.plsql(statements);
         core.unbind('$');
         internal.log_session_step('done');
     exception
@@ -487,7 +435,7 @@ create or replace package body out.data_integration is
     end control_append;
 
     procedure incremental_update(target_table_name varchar2, source_table_name varchar2, options varchar2) is
-        statements statements_t;
+        statements core.statements_t;
     begin
         internal.log_session_step('start');
         statements(1).code := q'[
@@ -671,7 +619,7 @@ create or replace package body out.data_integration is
         core.bind('$', 'target_columns', get_columns(target_table_name, separator => ', '));
         core.bind('$', 'target_table_owner_name', get_property('table owner name', target_table_name));
         core.bind('$', 'target_table_short_name', get_property('table short name', target_table_name));
-        execute(statements);
+        core.plsql(statements);
         core.unbind('$');
         internal.log_session_step('done');
     exception
