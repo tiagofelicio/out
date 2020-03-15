@@ -50,12 +50,11 @@ create or replace package body metadata.examples is
         out.files.remove('#landing_zone/folder1_1', q'[
             recursive => true
         ]');
-        /*
+        out.utilities.shell('(sleep 10; touch #landing_zone/trigger) &');
+        out.files.wait('#landing_zone/trigger');
         out.files.wait('#landing_zone/trigger', q'[
             polling interval => 10
         ]');
-        out.files.wait('#landing_zone/trigger');
-        */
         out.files.zip('#landing_zone/file.zip', '#landing_zone/file.txt', q'[
             keep => true
         ]');
@@ -63,7 +62,7 @@ create or replace package body metadata.examples is
             recursive => true
         ]');
         out.files.zip('#landing_zone/test.zip', '#landing_zone/*', q'[
-            level => 9
+            compress level => 9
             password => test
         ]');
         out.files.unzip('/', '#landing_zone/test.zip', q'[
