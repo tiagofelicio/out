@@ -7,7 +7,8 @@ create or replace package out.core authid current_user is
     type statement_t is record (
         code text_t,
         execute boolean default true,
-        ignore_error number
+        ignore_error number,
+        log boolean default true
     );
 
     type statements_t is table of statement_t index by pls_integer;
@@ -22,15 +23,15 @@ create or replace package out.core authid current_user is
 
     function get_option(option_name varchar2, options varchar2, defaul_value boolean) return boolean;
 
+    function plsql(into_date statement_t) return date;
+
+    function plsql(into_number statement_t) return number;
+
+    function plsql(into_varchar2 statement_t) return varchar2;
+
     procedure plsql(statements statements_t);
 
-    procedure plsql(statement statement_t, result out date);
-
-    procedure plsql(statement statement_t, result out number);
-
-    procedure plsql(statement statement_t, result out varchar2);
-
-    function shell(statement varchar2, log boolean default true) return varchar2;
+    function shell(statement statement_t) return varchar2;
 
     function solve(text varchar2) return varchar2;
 

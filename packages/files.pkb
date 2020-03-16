@@ -54,11 +54,11 @@ create or replace package body out.files is
     ----------------------------------------------------------------------------------------------------------------------------
 
     procedure copy(target_filename varchar2, source_filename varchar2, options varchar2 default null) is
-        statement core.text_t;
+        statement core.statement_t;
         output core.text_t;
     begin
         internal.log_session_step('start');
-        statement := q'[
+        statement.code := q'[
             cp $recursive $source_filename $target_filename
         ]';
         core.bind('$', 'recursive', get_property('recursive', core.get_option('recursive', options)));
@@ -74,11 +74,11 @@ create or replace package body out.files is
     end copy;
 
     procedure move(target_filename varchar2, source_filename varchar2, options varchar2 default null) is
-        statement core.text_t;
+        statement core.statement_t;
         output core.text_t;
     begin
         internal.log_session_step('start');
-        statement := q'[
+        statement.code := q'[
             mv $source_filename $target_filename
         ]';
         core.bind('$', 'source_filename', source_filename);
@@ -93,11 +93,11 @@ create or replace package body out.files is
     end move;
 
     procedure remove(filename varchar2, options varchar2 default null) is
-        statement core.text_t;
+        statement core.statement_t;
         output core.text_t;
     begin
         internal.log_session_step('start');
-        statement := q'[
+        statement.code := q'[
             rm $force $recursive $filename
         ]';
         core.bind('$', 'filename', filename);
@@ -113,11 +113,11 @@ create or replace package body out.files is
     end remove;
 
     procedure wait(filename varchar2, options varchar2 default null) is
-        statement core.text_t;
+        statement core.statement_t;
         output core.text_t;
     begin
         internal.log_session_step('start');
-        statement := q'[
+        statement.code := q'[
             while [ ! -f $filename ]; do sleep $polling_interval; done
         ]';
         core.bind('$', 'filename', filename);
@@ -239,11 +239,11 @@ create or replace package body out.files is
     end unload;
 
     procedure zip(archive_name varchar2, filename varchar2, options varchar2 default null) is
-        statement core.text_t;
+        statement core.statement_t;
         output core.text_t;
     begin
         internal.log_session_step('start');
-        statement := q'[
+        statement.code := q'[
             zip $keep_input_files $compress_level $password $recursive $archive_name $filename
         ]';
         core.bind('$', 'archive_name', archive_name);
@@ -262,11 +262,11 @@ create or replace package body out.files is
     end zip;
 
     procedure unzip(directory_name varchar2, archive_name varchar2, options varchar2 default null) is
-        statement core.text_t;
+        statement core.statement_t;
         output core.text_t;
     begin
         internal.log_session_step('start');
-        statement := q'[
+        statement.code := q'[
             unzip -o $password $archive_name -d $directory_name && if [ "false" == "$keep_input_files" ]; then rm $archive_name; fi
         ]';
         core.bind('$', 'archive_name', archive_name);

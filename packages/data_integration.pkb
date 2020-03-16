@@ -152,7 +152,7 @@ create or replace package body out.data_integration is
         ]';
         core.bind('$', 'columns_name', columns_name);
         core.bind('$', 'table_name', table_name);
-        core.plsql(statement, duplicated_keys);
+        duplicated_keys := core.plsql(into_number => statement);
         if duplicated_keys <> 0 then
             raise_application_error(-20000, core.solve('Found ' || to_char(duplicated_keys) || ' duplicated keys in table $table_name using ' || columns_name || ' as key.'));
         end if;

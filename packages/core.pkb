@@ -99,6 +99,88 @@ create or replace package body out.core is
         return option_boolean_value;
     end get_option;
 
+    function plsql(into_date statement_t) return date is
+        solved_statement text_t;
+        result date;
+        work number;
+    begin
+        if into_date.execute then
+            solved_statement := solve(into_date.code);
+            if into_date.log then
+                internal.log_session_step_task('start', solved_statement);
+            end if;
+            execute immediate solved_statement into result;
+            work := sql%rowcount;
+            if into_date.log then
+                internal.log_session_step_task('done', work => work);
+            end if;
+            return result;
+        end if;
+        return null;
+    exception
+        when others then
+            if into_date.log then
+                internal.log_session_step_task('error', sqlerrm);
+            else
+                raise;
+            end if;
+    end plsql;
+
+    function plsql(into_number statement_t) return number is
+        solved_statement text_t;
+        result number;
+        work number;
+    begin
+        if into_number.execute then
+            solved_statement := solve(into_number.code);
+            if into_number.log then
+                internal.log_session_step_task('start', solved_statement);
+            end if;
+            execute immediate solved_statement into result;
+            work := sql%rowcount;
+            if into_number.log then
+                internal.log_session_step_task('done', work => work);
+            end if;
+            return result;
+        end if;
+        return null;
+    exception
+        when others then
+            if into_number.log then
+                internal.log_session_step_task('error', sqlerrm);
+            else
+                raise;
+            end if;
+    end plsql;
+    
+
+    function plsql(into_varchar2 statement_t) return varchar2 is
+        solved_statement text_t;
+        result varchar2(4000);
+        work number;
+    begin
+        if into_varchar2.execute then
+            solved_statement := solve(into_varchar2.code);
+            if into_varchar2.log then
+                internal.log_session_step_task('start', solved_statement);
+            end if;
+            execute immediate solved_statement into result;
+            work := sql%rowcount;
+            if into_varchar2.log then
+                internal.log_session_step_task('done', work => work);
+            end if;
+            return result;
+        end if;
+        return null;
+    exception
+        when others then
+            if into_varchar2.log then
+                internal.log_session_step_task('error', sqlerrm);
+            else
+                raise;
+            end if;
+    end plsql;
+
     procedure plsql(statements statements_t) is
         solved_statement text_t;
         statement statement_t;
@@ -127,73 +209,34 @@ create or replace package body out.core is
         end loop;
     end plsql;
 
-    procedure plsql(statement statement_t, result out date) is
-        solved_statement text_t;
-    begin
-        if statement.execute then
-            solved_statement := solve(statement.code);
-            internal.log_session_step_task('start', solved_statement);
-            execute immediate solved_statement into result;
-            internal.log_session_step_task('done');
-        end if;
-    exception
-        when others then
-            internal.log_session_step_task('error', sqlerrm);
-    end plsql;
-
-    procedure plsql(statement statement_t, result out number) is
-        solved_statement text_t;
-    begin
-        if statement.execute then
-            solved_statement := solve(statement.code);
-            internal.log_session_step_task('start', solved_statement);
-            execute immediate solved_statement into result;
-            internal.log_session_step_task('done');
-        end if;
-    exception
-        when others then
-            internal.log_session_step_task('error', sqlerrm);
-    end plsql;
-
-    procedure plsql(statement statement_t, result out varchar2) is
-        solved_statement text_t;
-    begin
-        if statement.execute then
-            solved_statement := solve(statement.code);
-            internal.log_session_step_task('start', solved_statement);
-            execute immediate solved_statement into result;
-            internal.log_session_step_task('done');
-        end if;
-    exception
-        when others then
-            internal.log_session_step_task('error', sqlerrm);
-    end plsql;
-
-    function shell(statement varchar2, log boolean default true) return varchar2 is
+    function shell(statement statement_t) return varchar2 is
         exit_value pls_integer;
         output text_t;
         solved_statement text_t;
         stderr text_t;
         stdout text_t;
     begin
-        solved_statement := solve(statement);
-        if log then
-            internal.log_session_step_task('start', solved_statement);
+        if statement.execute then
+            solved_statement := solve(statement.code);
+            if statement.log then
+                internal.log_session_step_task('start', solved_statement);
+            end if;
+            output := internal.shell(solved_statement);
+            exit_value := to_number(regexp_substr(output, '(^|' || internal.shell_output_separator || ')([^' || internal.shell_output_separator || ']*)', 1, 1, null, 2));
+            stderr := regexp_substr(output, '(^|' || internal.shell_output_separator || ')([^' || internal.shell_output_separator || ']*)', 1, 3, null, 2);
+            stdout := regexp_substr(output, '(^|' || internal.shell_output_separator || ')([^' || internal.shell_output_separator || ']*)', 1, 2, null, 2);
+            if exit_value <> 0 then
+                raise_application_error(-20000, stderr);
+            end if;
+            if statement.log then
+                internal.log_session_step_task('done');
+            end if;
+            return stdout;
         end if;
-        output := internal.shell(solved_statement);
-        exit_value := to_number(regexp_substr(output, '(^|' || internal.shell_output_separator || ')([^' || internal.shell_output_separator || ']*)', 1, 1, null, 2));
-        stderr := regexp_substr(output, '(^|' || internal.shell_output_separator || ')([^' || internal.shell_output_separator || ']*)', 1, 3, null, 2);
-        stdout := regexp_substr(output, '(^|' || internal.shell_output_separator || ')([^' || internal.shell_output_separator || ']*)', 1, 2, null, 2);
-        if exit_value <> 0 then
-            raise_application_error(-20000, stderr);
-        end if;
-        if log then
-            internal.log_session_step_task('done');
-        end if;
-        return stdout;
+        return null;
     exception
         when others then
-            if log then
+            if statement.log then
                 internal.log_session_step_task('error', sqlerrm);
             else
                 raise;
