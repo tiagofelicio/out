@@ -4,8 +4,6 @@ create or replace package out.data_integration authid current_user is
 
     procedure create_table(table_name varchar2, statement varchar2);
 
-    procedure create_table(table_name varchar2, statement varchar2, options varchar2);
-
     procedure drop_table(table_name varchar2);
 
     procedure control_append(target_table_name varchar2, source_table_name varchar2, options varchar2);

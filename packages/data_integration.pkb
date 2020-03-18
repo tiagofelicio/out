@@ -5,8 +5,8 @@ create or replace package body out.data_integration is
     ----------------------------------------------------------------------------------------------------------------------------
 
     function get_columns(table_name varchar2, start_text varchar2 default null, pattern varchar2 default null, separator varchar2 default null, columns_in varchar2 default null, columns_not_in varchar2 default null, remove_last_occurence varchar2 default null) return varchar2 is
-        statement core.text_t;
-        columns_list core.text_t;
+        statement types.text;
+        columns_list types.text;
         columns_name_cursor sys_refcursor;
         column_name all_tab_columns.column_name%type;
     begin
@@ -50,21 +50,21 @@ create or replace package body out.data_integration is
     end get_columns;
 
     function get_property(property_name varchar2, text varchar2) return varchar2 is
-        property_value core.text_t;
-        solved_text core.text_t;
-        analyze_partition_clause core.text_t;
+        property_value types.text;
+        solved_text types.text;
+        analyze_partition_clause types.text;
         directory_name all_directories.directory_name%type;
         directory_path all_directories.directory_path%type;
-        external_table_columns_definition core.text_t;
-        external_table_name core.text_t;
-        field_delimiter_clause core.text_t;
-        filename core.text_t;
-        filename_with_path core.text_t;
-        integration_table_01_name core.text_t;
-        integration_table_02_name core.text_t;
-        integration_table_03_name core.text_t;
+        external_table_columns_definition types.text;
+        external_table_name types.text;
+        field_delimiter_clause types.text;
+        filename types.text;
+        filename_with_path types.text;
+        integration_table_01_name types.text;
+        integration_table_02_name types.text;
+        integration_table_03_name types.text;
         lob_column_name all_tab_columns.column_name%type;
-        partition_clause core.text_t;
+        partition_clause types.text;
         table_owner_name all_tables.owner%type;
         table_short_name all_tables.table_name%type;
     begin
@@ -137,10 +137,10 @@ create or replace package body out.data_integration is
     ----------------------------------------------------------------------------------------------------------------------------
 
     procedure check_unique_key(table_name varchar2, columns_name varchar2) is
-        statement core.statement_t;
+        statement types.statement;
         duplicated_keys number;
     begin
-        internal.log_session_step('start');
+        logger.session_step('start');
         statement.code := q'[
             select count(1)
             from (
@@ -152,22 +152,22 @@ create or replace package body out.data_integration is
         ]';
         core.bind('$', 'columns_name', columns_name);
         core.bind('$', 'table_name', table_name);
-        duplicated_keys := core.plsql(into_number => statement);
+        duplicated_keys := execute.plsql(statement).AccessNumber;
         if duplicated_keys <> 0 then
             raise_application_error(-20000, core.solve('Found ' || to_char(duplicated_keys) || ' duplicated keys in table $table_name using ' || columns_name || ' as key.'));
         end if;
         core.unbind('$');
-        internal.log_session_step('done');
+        logger.session_step('done');
     exception
         when others then
             core.unbind('$');
-            internal.log_session_step('error', sqlerrm);
+            logger.session_step('error', sqlerrm);
     end check_unique_key;
 
     procedure create_table(table_name varchar2, statement varchar2) is
-        statements core.statements_t;
+        statements types.statements;
     begin
-        internal.log_session_step('start');
+        logger.session_step('start');
         statements(1).code := q'[
             drop table $table_name purge
         ]';
@@ -194,199 +194,36 @@ create or replace package body out.data_integration is
         core.bind('$', 'table_name', table_name);
         core.bind('$', 'table_owner_name', get_property('table owner name', table_name));
         core.bind('$', 'table_short_name', get_property('table short name', table_name));
-        core.plsql(statements);
+        execute.plsql(statements);
         core.unbind('$');
-        internal.log_session_step('done');
+        logger.session_step('done');
     exception
         when others then
             core.unbind('$');
-            internal.log_session_step('error', sqlerrm);
-    end create_table;
-
-    procedure create_table(table_name varchar2, statement varchar2, options varchar2) is
-        statements core.statements_t;
-    begin
-        internal.log_session_step('start');
-        case core.get_option('type', options)
-            when 'delimited file' then
-                statements(1).code := q'[
-                    drop directory $directory_name
-                ]';
-                statements(1).ignore_error := -04043;
-                statements(2).code := q'[
-                    create directory $directory_name as '$directory_path'
-                ]';
-                statements(3).code := q'[
-                    drop table $external_table_name purge
-                ]';
-                statements(3).ignore_error := -00942;
-                statements(4).code := q'[
-                    create table $external_table_name (
-                        $external_table_columns_definition
-                    )
-                    organization external (
-                        type oracle_loader
-                        default directory $directory_name
-                        access parameters (
-                            records delimited by newline
-                            skip $heading
-                            nobadfile
-                            nodiscardfile
-                            nologfile
-                            fields terminated by '$field_separator' $field_delimiter_clause
-                            missing field values are null
-                        )
-                        location ('$filename')
-                    )
-                    nomonitoring
-                    parallel
-                    reject limit 0
-                ]';
-                statements(5).code := q'[
-                    drop table $table_name purge
-                ]';
-                statements(5).ignore_error := -00942;
-                statements(6).code := q'[
-                    create table $table_name nologging pctfree 0 compress parallel as
-                    $statement
-                ]';
-                statements(7).code := q'[
-                    begin
-                        dbms_stats.gather_table_stats(
-                            ownname => '$table_owner_name',
-                            tabname => '$table_short_name',
-                            estimate_percent => dbms_stats.auto_sample_size,
-                            method_opt => 'for all columns size auto',
-                            degree => dbms_stats.auto_degree,
-                            granularity => 'all',
-                            cascade => true,
-                            no_invalidate => dbms_stats.auto_invalidate
-                        );
-                    end;
-                ]';
-                statements(8).code := q'[
-                    drop table $external_table_name purge
-                ]';
-                statements(9).code := q'[
-                    drop directory $directory_name
-                ]';
-                core.bind('$', 'directory_name', get_property('directory name', table_name));
-                core.bind('$', 'directory_path', get_property('directory path', statement));
-                core.bind('$', 'external_table_columns_definition', get_property('external table columns definition', statement));
-                core.bind('$', 'external_table_name', get_property('external table name', table_name));
-                core.bind('$', 'field_delimiter_clause', get_property('field delimiter clause', core.get_option('field delimiter', options)));
-                core.bind('$', 'field_separator', core.get_option('field separator', options));
-                core.bind('$', 'filename', get_property('filename', statement));
-                core.bind('$', 'heading', core.get_option('heading', options));
-                core.bind('$', 'statement', replace(core.solve(statement), get_property('filename with path', statement), get_property('external table name', table_name)));
-                core.bind('$', 'table_name', table_name);
-                core.bind('$', 'table_owner_name', get_property('table owner name', table_name));
-                core.bind('$', 'table_short_name', get_property('table short name', table_name));
-                core.plsql(statements);
-            when 'file 2 lob' then
-                statements(1).code := q'[
-                    drop directory $directory_name
-                ]';
-                statements(1).ignore_error := -04043;
-                statements(2).code := q'[
-                    create directory $directory_name as '$directory_path'
-                ]';
-                statements(3).code := q'[
-                    drop table $table_name purge
-                ]';
-                statements(3).ignore_error := -00942;
-                statements(4).code := q'[
-                    create table $table_name (
-                        $lob_column_name clob
-                    )
-                    nologging
-                    pctfree 0
-                    compress
-                    parallel
-                ]';
-                statements(5).code := q'[
-                    declare
-                        l_bfile bfile;
-                        l_clob clob;
-                        l_dest_offset integer := 1;
-                        l_src_offset integer := 1;
-                        l_lang_context integer := 0;
-                        l_warning integer := 0;
-                    begin
-                        insert into $table_name (data) values (empty_clob()) return data into l_clob;
-                        l_bfile := bfilename(upper('$directory_name'), '$filename');
-                        dbms_lob.fileopen(l_bfile, dbms_lob.file_readonly);
-                        dbms_lob.trim(l_clob, 0);
-                        dbms_lob.loadclobfromfile(
-                            dest_lob => l_clob,
-                            src_bfile => l_bfile,
-                            amount => dbms_lob.lobmaxsize,
-                            dest_offset => l_dest_offset,
-                            src_offset => l_src_offset,
-                            bfile_csid => 0,
-                            lang_context => l_lang_context,
-                            warning => l_warning
-                        );
-                        dbms_lob.fileclose(l_bfile);
-                    end;
-                ]';
-                statements(6).code := q'[
-                    begin
-                        dbms_stats.gather_table_stats(
-                            ownname => '$table_owner_name',
-                            tabname => '$table_short_name',
-                            estimate_percent => dbms_stats.auto_sample_size,
-                            method_opt => 'for all columns size auto',
-                            degree => dbms_stats.auto_degree,
-                            granularity => 'all',
-                            cascade => true,
-                            no_invalidate => dbms_stats.auto_invalidate
-                        );
-                    end;
-                ]';
-                statements(7).code := q'[
-                    drop directory $directory_name
-                ]';
-                core.bind('$', 'directory_name', get_property('directory name', table_name));
-                core.bind('$', 'directory_path', get_property('directory path', statement));
-                core.bind('$', 'filename', get_property('filename', statement));
-                core.bind('$', 'lob_column_name', get_property('lob column name', statement));
-                core.bind('$', 'table_name', table_name);
-                core.bind('$', 'table_owner_name', get_property('table owner name', table_name));
-                core.bind('$', 'table_short_name', get_property('table short name', table_name));
-                core.plsql(statements);
-            else
-                raise_application_error(-20000, 'Unsupported type ' || core.get_option('type', options) || '.');
-        end case;
-        core.unbind('$');
-        internal.log_session_step('done');
-    exception
-        when others then
-            core.unbind('$');
-            internal.log_session_step('error', sqlerrm);
+            logger.session_step('error', sqlerrm);
     end create_table;
 
     procedure drop_table(table_name varchar2) is
-        statements core.statements_t;
+        statements types.statements;
     begin
-        internal.log_session_step('start');
+        logger.session_step('start');
         statements(1).code := q'[
             drop table $table_name purge
         ]';
         core.bind('$', 'table_name', table_name);
-        core.plsql(statements);
+        execute.plsql(statements);
         core.unbind('$');
-        internal.log_session_step('done');
+        logger.session_step('done');
     exception
         when others then
             core.unbind('$');
-            internal.log_session_step('error', sqlerrm);
+            logger.session_step('error', sqlerrm);
     end drop_table;
 
     procedure control_append(target_table_name varchar2, source_table_name varchar2, options varchar2) is
-        statements core.statements_t;
+        statements types.statements;
     begin
-        internal.log_session_step('start');
+        logger.session_step('start');
         statements(1).code := q'[
             truncate table $target_table_owner_name.$target_table_short_name drop storage
         ]';
@@ -425,19 +262,19 @@ create or replace package body out.data_integration is
         core.bind('$', 'source_table_name', source_table_name);
         core.bind('$', 'target_table_owner_name', get_property('table owner name', target_table_name));
         core.bind('$', 'target_table_short_name', get_property('table short name', target_table_name));
-        core.plsql(statements);
+        execute.plsql(statements);
         core.unbind('$');
-        internal.log_session_step('done');
+        logger.session_step('done');
     exception
         when others then
             core.unbind('$');
-            internal.log_session_step('error', sqlerrm);
+            logger.session_step('error', sqlerrm);
     end control_append;
 
     procedure incremental_update(target_table_name varchar2, source_table_name varchar2, options varchar2) is
-        statements core.statements_t;
+        statements types.statements;
     begin
-        internal.log_session_step('start');
+        logger.session_step('start');
         statements(1).code := q'[
             drop table $staging_area.$integration_table_01_short_name purge
         ]';
@@ -619,13 +456,13 @@ create or replace package body out.data_integration is
         core.bind('$', 'target_columns', get_columns(target_table_name, separator => ', '));
         core.bind('$', 'target_table_owner_name', get_property('table owner name', target_table_name));
         core.bind('$', 'target_table_short_name', get_property('table short name', target_table_name));
-        core.plsql(statements);
+        execute.plsql(statements);
         core.unbind('$');
-        internal.log_session_step('done');
+        logger.session_step('done');
     exception
         when others then
             core.unbind('$');
-            internal.log_session_step('error', sqlerrm);
+            logger.session_step('error', sqlerrm);
     end incremental_update;
 
     ----------------------------------------------------------------------------------------------------------------------------
