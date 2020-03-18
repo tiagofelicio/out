@@ -13,6 +13,16 @@ quota unlimited on &3;
 
 grant connect to out;
 grant resource to out;
+grant create any directory to out;
+grant drop any directory to out;
+grant create any table to out;
+grant alter any table to out;
+grant drop any table to out;
+grant analyze any to out;
+grant select any table to out;
+grant insert any table to out;
+grant update any table to out;
+grant delete any table to out;
 grant execute on dbms_lock to out;
 
 begin
@@ -90,14 +100,19 @@ noparallel;
 
 @&1/out/java/OUTTools.pls
 
+@&1/out/packages/types.pks
 @&1/out/packages/core.pks
 @&1/out/packages/core.pkb
-@&1/out/packages/internal.pks
-@&1/out/packages/internal.pkb
+@&1/out/packages/execute.pks
+@&1/out/packages/execute.pkb
 @&1/out/packages/data_integration.pks
 @&1/out/packages/data_integration.pkb
-@&1/out/packages/tools.pks
-@&1/out/packages/tools.pkb
+@&1/out/packages/files.pks
+@&1/out/packages/files.pkb
+@&1/out/packages/internet.pks
+@&1/out/packages/internet.pkb
+@&1/out/packages/utilities.pks
+@&1/out/packages/utilities.pkb
 
 @&1/out/procedures/bind.pls
 @&1/out/procedures/debug.pls

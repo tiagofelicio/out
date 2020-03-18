@@ -46,7 +46,9 @@ create or replace package body metadata.examples is
         out.files.move('#landing_zone/folder/folder2_1', '#landing_zone/folder2_1');
         out.files.move('#landing_zone/folder/folder2', '#landing_zone/folder2');
         out.files.move('#landing_zone/file.txt', '#landing_zone/file_1_1.txt');
-        out.files.remove('#landing_zone/file_1.txt');
+        out.files.remove('#landing_zone/file_1.txt', q'[
+            force => true
+        ]');
         out.files.remove('#landing_zone/folder1_1', q'[
             recursive => true
         ]');
@@ -55,9 +57,7 @@ create or replace package body metadata.examples is
         out.files.wait('#landing_zone/trigger', q'[
             polling interval => 10
         ]');
-        out.files.zip('#landing_zone/file.zip', '#landing_zone/file.txt', q'[
-            keep => true
-        ]');
+        out.files.zip('#landing_zone/file.zip', '#landing_zone/file.txt');
         out.files.zip('#landing_zone/folder.zip', '#landing_zone/folder', q'[
             recursive => true
         ]');
@@ -70,7 +70,24 @@ create or replace package body metadata.examples is
         ]');
         out.files.unzip('/', '#landing_zone/file.zip');
         out.files.unzip('/', '#landing_zone/folder.zip', q'[
-            keep => true
+            keep input files => true
+        ]');
+        out.files.unload('/home/oracle/all_users.csv', 'sys.all_users', q'[
+            date format => yyyymmddhh24miss
+        ]');
+        out.files.load('stage.file_all_users', '/home/oracle/all_users.csv', q'[
+            username varchar2(128)
+            user_id number
+            created date mask "yyyymmddhh24miss"
+            common varchar2(3)
+            oracle_maintained varchar2(1)
+            inherited varchar2(3)
+            default_collation varchar2(100)
+            implicit varchar2(3)
+            all_shard varchar2(3)
+        ]');
+        out.files.load('stage.file_lob', '/home/oracle/all_users.csv', null, q'[
+            file format => large object
         ]');
         out.process('done');
     exception
