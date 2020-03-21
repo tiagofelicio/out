@@ -101,6 +101,7 @@ noparallel;
 @&1/out/java/OUTTools.pls
 
 @&1/out/packages/types.pks
+@&1/out/packages/types.pkb
 @&1/out/packages/core.pks
 @&1/out/packages/core.pkb
 @&1/out/packages/logger.pks
