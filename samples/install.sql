@@ -15,11 +15,10 @@ grant connect to metadata;
 grant create procedure to metadata;
 
 grant execute on out.bind to metadata;
-grant execute on out.debug to metadata;
-grant execute on out.dump to metadata;
 grant execute on out.process to metadata;
 grant execute on out.data_integration to metadata;
 grant execute on out.files to metadata;
+grant execute on out.internet to metadata;
 grant execute on out.utilities to metadata;
 
 create user data identified by &2
@@ -38,3 +37,5 @@ create table data.dh_world_cities (
     resource_name varchar2(250)
 );
 
+@&1/samples/processes/examples.pks
+@&1/samples/processes/examples.pkb
