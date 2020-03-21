@@ -152,7 +152,7 @@ create or replace package body out.logger is
         pragma autonomous_transaction;
     begin
         if logger.session_no is null then
-            if status = 'start' and core.debug then
+            if status = 'start' then
                 dbms_output.put_line('---> ' || options);
             elsif status = 'error' then
                 raise_application_error(-20000, substr(options, 1, 4000));

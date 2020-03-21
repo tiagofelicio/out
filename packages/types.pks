@@ -1,8 +1,8 @@
-create or replace package out.types authid current_user is
+create or replace package out.types authid definer is
 
     subtype text is varchar2(32767);
 
-    type binds is table of text index by varchar2(255);
+    type map is table of text index by varchar2(255);
 
     type statement is record (
         code text,
@@ -12,6 +12,8 @@ create or replace package out.types authid current_user is
     );
 
     type statements is table of statement index by pls_integer;
+
+    function to_boolean(arg text) return boolean;
 
 end types;
 /

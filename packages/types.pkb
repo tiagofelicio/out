@@ -1,28 +1,26 @@
-create or replace package body out.internet is
+create or replace package body out.types is
 
     ----------------------------------------------------------------------------------------------------------------------------
     ----------------------------------------------------------------------------------------------------------------------------
     ----------------------------------------------------------------------------------------------------------------------------
 
-    procedure http_get(filename varchar2, url varchar2, options varchar2 default null) is
-        statement types.statement;
+    function to_boolean(arg text) return boolean is
+        result boolean;
     begin
-        logger.session_step('start');
-        statement.code := q'[
-            curl --request GET --location "$internet.http_get.url" --output "$internet.http_get.filename"
-        ]';
-        core.set('internet.http_get.filename', filename);
-        core.set('internet.http_get.url', url);
-        execute.shell(statement);
-        logger.session_step('done');
-    exception
-        when others then
-            logger.session_step('error', sqlerrm);
-    end http_get;
+        case lower(arg)
+            when 'true' then
+                result := true;
+            when 'false' then
+                result := false;
+            else
+                raise_application_error(-20000, 'Unrecognized boolean value ' || arg || '.');
+        end case;
+        return result;
+    end to_boolean;
 
     ----------------------------------------------------------------------------------------------------------------------------
     ----------------------------------------------------------------------------------------------------------------------------
     ----------------------------------------------------------------------------------------------------------------------------
 
-end internet;
+end types;
 /
