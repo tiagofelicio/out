@@ -1,18 +1,16 @@
-create or replace package out.core authid current_user is
+create or replace package out.core authid definer is
 
-    debug boolean;
+    procedure bind(variable_name varchar2, variable_value varchar2);
 
-    procedure bind(variable_type varchar2, variable_name varchar2, variable_value varchar2);
+    procedure unbind(variable_name varchar2 default null);
 
-    procedure unbind(variable_type varchar2, variable_name varchar2 default null);
+    function get(property_name varchar2) return varchar2;
 
-    procedure dump;
+    procedure set(property_name varchar2, arg1 varchar2 default null, arg2 varchar2 default null, arg3 varchar2 default null);
 
-    function get_option(option_name varchar2, options varchar2, default_value varchar2 default null) return varchar2;
+    function isset(property_name varchar2) return boolean;
 
-    function get_option(option_name varchar2, options varchar2, defaul_value boolean) return boolean;
-
-    function get_property_value(property_name varchar2, argument varchar2) return varchar2;
+    procedure unset(property_name varchar2 default null);
 
     function solve(text varchar2) return varchar2;
 
