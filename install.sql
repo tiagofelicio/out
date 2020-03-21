@@ -103,6 +103,8 @@ noparallel;
 @&1/out/packages/types.pks
 @&1/out/packages/core.pks
 @&1/out/packages/core.pkb
+@&1/out/packages/logger.pks
+@&1/out/packages/logger.pkb
 @&1/out/packages/execute.pks
 @&1/out/packages/execute.pkb
 @&1/out/packages/data_integration.pks
@@ -115,6 +117,4 @@ noparallel;
 @&1/out/packages/utilities.pkb
 
 @&1/out/procedures/bind.pls
-@&1/out/procedures/debug.pls
-@&1/out/procedures/dump.pls
 @&1/out/procedures/process.pls

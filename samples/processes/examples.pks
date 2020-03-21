@@ -6,5 +6,7 @@ create or replace package metadata.examples authid current_user is
 
     procedure utilities_test;
 
+    procedure dh_world_cities;
+
 end examples;
 /

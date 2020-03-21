@@ -8,10 +8,6 @@ create or replace package body out.execute is
     language java
     name 'OUTTools.shell(java.lang.String) return java.lang.String';
 
-    function shell_output_separator return varchar2 is
-    language java
-    name 'OUTTools.SHELL_OUTPUT_SEPARATOR() return java.lang.String';
-
     ----------------------------------------------------------------------------------------------------------------------------
     ----------------------------------------------------------------------------------------------------------------------------
     ----------------------------------------------------------------------------------------------------------------------------
@@ -118,6 +114,7 @@ create or replace package body out.execute is
                 logger.session_step_task('done', work => 1);
             end if;
         end if;
+        core.unset;
         return result;
     exception
         when others then
@@ -157,6 +154,7 @@ create or replace package body out.execute is
                 end;
             end if;
         end loop;
+        core.unset;
     end plsql;
 
     function shell(statement types.statement) return varchar2 is
@@ -172,9 +170,9 @@ create or replace package body out.execute is
                 logger.session_step_task('start', solved_statement);
             end if;
             output := shell(solved_statement);
-            exit_value := to_number(regexp_substr(output, '(^|' || shell_output_separator || ')([^' || shell_output_separator || ']*)', 1, 1, null, 2));
-            stderr := regexp_substr(output, '(^|' || shell_output_separator || ')([^' || shell_output_separator || ']*)', 1, 3, null, 2);
-            stdout := regexp_substr(output, '(^|' || shell_output_separator || ')([^' || shell_output_separator || ']*)', 1, 2, null, 2);
+            exit_value := to_number(regexp_substr(output, '(^|~)([^~]*)', 1, 1, null, 2));
+            stderr := regexp_substr(output, '(^|~)([^~]*)', 1, 3, null, 2);
+            stdout := regexp_substr(output, '(^|~)([^~]*)', 1, 2, null, 2);
             if exit_value <> 0 then
                 raise_application_error(-20000, stderr);
             end if;
@@ -197,6 +195,7 @@ create or replace package body out.execute is
         output types.text;
     begin
         output := execute.shell(statement);
+        core.unset;
     end shell;
 
     ----------------------------------------------------------------------------------------------------------------------------
