@@ -68,11 +68,11 @@ create or replace package body out.utilities is
         return output;
     exception
         when others then
-            if core.get_option('ignore errors', options, false) then
-                return null;
-            else
+            --if core.get_option('ignore errors', options, false) then
+                --return null;
+            --else
                 raise;
-            end if;
+            --end if;
     end shell;
 
     procedure shell(statement varchar2, options varchar2 default null) is
