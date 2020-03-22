@@ -14,7 +14,7 @@ create or replace package body metadata.examples is
         out.process('done');
     exception
         when others then
-            out.process('error', sqlerrm);
+            out.process('error');
     end data_integration_test;
 
     procedure files_test is
@@ -82,7 +82,7 @@ create or replace package body metadata.examples is
         out.process('done');
     exception
         when others then
-            out.process('error', sqlerrm);
+            out.process('error');
     end files_test;
 
     procedure utilities_test is
@@ -106,7 +106,7 @@ create or replace package body metadata.examples is
         out.process('done');
     exception
         when others then
-            out.process('error', sqlerrm);
+            out.process('error');
     end utilities_test;
 
     procedure dh_world_cities is
@@ -174,7 +174,7 @@ create or replace package body metadata.examples is
         out.process('done');
     exception
         when others then
-            out.process('error', sqlerrm);
+            out.process('error');
     end dh_world_cities;
 
 end examples;

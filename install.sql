@@ -51,9 +51,9 @@ create table out.sessions (
     end date,
     duration number generated always as (round((end - begin) * 24 * 60 * 60)) virtual,
     status varchar2(1 byte),
-    username varchar2(100 byte),
+    username varchar2(250 byte),
     work number,
-    error varchar2(4000 byte),
+    error clob,
     constraint sessions_pk primary key (no) using index pctfree 50 compute statistics nologging
 )
 pctfree 50
@@ -70,7 +70,7 @@ create table out.session_steps (
     duration number generated always as (round((end - begin) * 24 * 60 * 60)) virtual,
     status varchar2(1 byte),
     work number,
-    error varchar2(4000 byte),
+    error clob,
     constraint session_steps_pk primary key (session_no, no) using index pctfree 50 compute statistics nologging,
     constraint session_steps_fk_sessions foreign key (session_no) references out.sessions (no)
 )
@@ -88,8 +88,8 @@ create table out.session_step_tasks (
     duration number generated always as (round((end - begin) * 24 * 60 * 60)) virtual,
     status varchar2(1 byte),
     work number,
-    text varchar2(4000 byte),
-    error varchar2(4000 byte),
+    code clob,
+    error clob,
     constraint session_steps_tasks_pk primary key (session_no, session_step_no, no) using index pctfree 50 compute statistics nologging,
     constraint session_step_tasks_fk_session_steps foreign key (session_no, session_step_no) references out.session_steps (session_no, no)
 )

@@ -42,7 +42,7 @@ create or replace package body out.execute is
         if statement.execute then
             solved_statement := core.solve(statement.code);
             if statement.log then
-                logger.session_step_task('start', solved_statement);
+                logger.session_step_task('start', code => solved_statement);
             end if;
             solved_statement_cursor := dbms_sql.open_cursor;
             dbms_sql.parse(solved_statement_cursor, solved_statement, dbms_sql.native);
@@ -111,7 +111,7 @@ create or replace package body out.execute is
                     result := anydata.ConvertVarchar2(result_varchar2);
             end case;
             if statement.log then
-                logger.session_step_task('done', work => 1);
+                logger.session_step_task('done');
             end if;
         end if;
         core.unset;
@@ -122,7 +122,7 @@ create or replace package body out.execute is
                 dbms_sql.close_cursor(solved_statement_cursor);
             end if;
             if statement.log then
-                logger.session_step_task('error', sqlerrm);
+                logger.session_step_task('error', error => sqlerrm);
             else
                 raise;
             end if;
@@ -138,7 +138,7 @@ create or replace package body out.execute is
             if statement.execute then
                 solved_statement := core.solve(statement.code);
                 begin
-                    logger.session_step_task('start', solved_statement);
+                    logger.session_step_task('start', code => solved_statement);
                     execute immediate solved_statement;
                     work := sql%rowcount;
                     commit;
@@ -147,9 +147,9 @@ create or replace package body out.execute is
                     when others then
                         rollback;
                         if statement.ignore_error is null or statement.ignore_error <> sqlcode then
-                            logger.session_step_task('error', sqlerrm);
+                            logger.session_step_task('error', error => sqlerrm);
                         else
-                            logger.session_step_task('warning', sqlerrm);
+                            logger.session_step_task('warning', error => sqlerrm);
                         end if;
                 end;
             end if;
@@ -167,7 +167,7 @@ create or replace package body out.execute is
         if statement.execute then
             solved_statement := core.solve(statement.code);
             if statement.log then
-                logger.session_step_task('start', solved_statement);
+                logger.session_step_task('start', code => solved_statement);
             end if;
             output := shell(solved_statement);
             exit_value := to_number(regexp_substr(output, '(^|~)([^~]*)', 1, 1, null, 2));
@@ -185,7 +185,7 @@ create or replace package body out.execute is
     exception
         when others then
             if statement.log then
-                logger.session_step_task('error', sqlerrm);
+                logger.session_step_task('error', error => sqlerrm);
             else
                 raise;
             end if;

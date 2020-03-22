@@ -9,7 +9,7 @@ create or replace package body out.internet is
     begin
         logger.session_step('start');
         statement.code := q'[
-            curl --request GET --location "$internet.http_get.url" --output "$internet.http_get.filename"
+            curl --request GET --fail --silent --show-error --location "$internet.http_get.url" --output "$internet.http_get.filename"
         ]';
         core.set('internet.http_get.filename', filename);
         core.set('internet.http_get.url', url);
