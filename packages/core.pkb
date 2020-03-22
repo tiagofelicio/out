@@ -7,6 +7,17 @@ create or replace package body out.core is
     properties types.map;
     variables types.map;
 
+    ----------------------------------------------------------------------------------------------------------------------------
+    ----------------------------------------------------------------------------------------------------------------------------
+    ----------------------------------------------------------------------------------------------------------------------------
+
+    procedure check_work_table(table_name varchar2) is
+    begin
+        if regexp_count(table_name, '\.') <> 0 then
+            raise_application_error(-20000, 'Invalid work table "' || table_name || '".');
+        end if;
+    end check_work_table;
+
     function get_column_list(table_name varchar2, start_text varchar2, pattern varchar2, separator varchar2, end_text varchar2, column_list_in varchar2 default null, column_list_not_in varchar2 default null) return varchar2 is
         column_list types.text := '';
         column_name all_tab_columns.column_name%type;
@@ -40,6 +51,13 @@ create or replace package body out.core is
         end if;
     end get_column_list;
 
+    function get_option(option_name varchar2, options varchar2, default_value varchar2 default null) return varchar2 is
+        option_value types.text;
+    begin
+        option_value := lower(trim(regexp_substr(options, replace(option_name, ' ', '[[:space:]]+') || '[[:space:]]+=>[[:space:]]+(.+)', 1, 1, 'mix', 1)));
+        return nvl(option_value, default_value);
+    end get_option;
+
     ----------------------------------------------------------------------------------------------------------------------------
     ----------------------------------------------------------------------------------------------------------------------------
     ----------------------------------------------------------------------------------------------------------------------------
@@ -69,18 +87,6 @@ create or replace package body out.core is
         i_arg1 types.text := case when arg1 is not null then solve(arg1) end;
         i_arg2 types.text := case when arg2 is not null then solve(arg2) end;
         i_arg3 types.text := case when arg3 is not null then solve(arg3) end;
-        procedure check_work_table(table_name varchar2) is
-        begin
-            if regexp_count(table_name, '\.') <> 0 then
-                raise_application_error(-20000, 'Invalid work table "' || table_name || '".');
-            end if;
-        end check_work_table;
-        function get_option(option_name varchar2, options varchar2, default_value varchar2 default null) return varchar2 is
-            option_value types.text;
-        begin
-            option_value := lower(trim(regexp_substr(options, replace(option_name, ' ', '[[:space:]]+') || '[[:space:]]+=>[[:space:]]+(.+)', 1, 1, 'mix', 1)));
-            return nvl(option_value, default_value);
-        end get_option;
     begin
         case property_name
         ------------------------------------------------------------------------------------------------------------------------ < data_integration.check_unique_key

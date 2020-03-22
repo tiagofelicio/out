@@ -54,11 +54,14 @@ create table out.sessions (
     username varchar2(250 byte),
     work number,
     error clob,
-    constraint sessions_pk primary key (no) using index pctfree 50 compute statistics nologging
+    constraint sessions_pk primary key (no) using index pctfree 20 compute statistics nologging
 )
-pctfree 50
+pctfree 20
 row store compress advanced
 nologging
+lob(error) store as securefile (
+    nocache nologging compress high deduplicate
+)
 noparallel;
 
 create table out.session_steps (
@@ -71,12 +74,15 @@ create table out.session_steps (
     status varchar2(1 byte),
     work number,
     error clob,
-    constraint session_steps_pk primary key (session_no, no) using index pctfree 50 compute statistics nologging,
+    constraint session_steps_pk primary key (session_no, no) using index pctfree 20 compute statistics nologging,
     constraint session_steps_fk_sessions foreign key (session_no) references out.sessions (no)
 )
-pctfree 50
+pctfree 20
 row store compress advanced
 nologging
+lob(error) store as securefile (
+    nocache nologging compress high deduplicate
+)
 noparallel;
 
 create table out.session_step_tasks (
@@ -90,12 +96,18 @@ create table out.session_step_tasks (
     work number,
     code clob,
     error clob,
-    constraint session_steps_tasks_pk primary key (session_no, session_step_no, no) using index pctfree 50 compute statistics nologging,
+    constraint session_steps_tasks_pk primary key (session_no, session_step_no, no) using index pctfree 20 compute statistics nologging,
     constraint session_step_tasks_fk_session_steps foreign key (session_no, session_step_no) references out.session_steps (session_no, no)
 )
-pctfree 50
+pctfree 20
 row store compress advanced
 nologging
+lob(code) store as securefile (
+    nocache nologging compress high deduplicate
+),
+lob(error) store as securefile (
+    nocache nologging compress high deduplicate
+)
 noparallel;
 
 @&1/out/java/OUTTools.pls

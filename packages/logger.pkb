@@ -60,7 +60,7 @@ create or replace package body out.logger is
                 end if;
                 mutex_lock('out$log_session');
                 select nvl(max(no), 0) + 1 into logger.session_no from sessions;
-                insert into sessions (no, name, begin, status, username) values (logger.session_no, name, sysdate, 'r', lower(sys_context('userenv', 'session_user')));
+                insert into sessions (no, name, begin, status, username, error) values (logger.session_no, name, sysdate, 'r', lower(sys_context('userenv', 'session_user')), empty_clob());
                 commit;
                 mutex_unlock('out$log_session');
                 dbms_application_info.set_module(name, null);
@@ -119,7 +119,7 @@ create or replace package body out.logger is
                     step_name := lower(who_called_me_owner || '.' || who_called_me_name);
                     mutex_lock('out$log_session_step');
                     select nvl(max(no), 0) + 1 into logger.session_step_no from session_steps where session_no = logger.session_no;
-                    insert into session_steps (session_no, no, name, begin, status) values (logger.session_no, logger.session_step_no, step_name, sysdate, 'r');
+                    insert into session_steps (session_no, no, name, begin, status, error) values (logger.session_no, logger.session_step_no, step_name, sysdate, 'r', empty_clob());
                     commit;
                     mutex_unlock('out$log_session_step');
                     dbms_application_info.set_action(step_name || ' : ' || to_char(who_called_me_lineno));
@@ -166,7 +166,7 @@ create or replace package body out.logger is
                 if logger.session_no is not null then
                     mutex_lock('out$log_session_step_task');
                     select nvl(max(no), 0) + 1 into logger.session_step_task_no from session_step_tasks where session_no = logger.session_no and session_step_no = logger.session_step_no;
-                    insert into session_step_tasks (session_no, session_step_no, no, begin, status, code) values (logger.session_no, logger.session_step_no, logger.session_step_task_no, sysdate, 'r', session_step_task.code);
+                    insert into session_step_tasks (session_no, session_step_no, no, begin, status, code, error) values (logger.session_no, logger.session_step_no, logger.session_step_task_no, sysdate, 'r', session_step_task.code, empty_clob());
                     commit;
                     mutex_unlock('out$log_session_step_task');
                 else

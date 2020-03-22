@@ -4,6 +4,11 @@ create or replace package out.types authid definer is
 
     type map is table of text index by varchar2(255);
 
+    type banana is record (
+        plsql text,
+        shell text
+    );
+
     type statement is record (
         code text,
         execute boolean default true,
