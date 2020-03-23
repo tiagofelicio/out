@@ -64,7 +64,7 @@ create or replace package body out.logger is
                 commit;
                 mutex_unlock('out$log_session');
                 dbms_application_info.set_module(name, null);
-                dbms_application_info.set_client_info('Oracle Unified Toolkit');
+                dbms_application_info.set_client_info('Unified Toolkit for Oracle');
                 logger.session_work := 0;
             when 'done' then
                 if logger.session_no is null then
@@ -170,7 +170,7 @@ create or replace package body out.logger is
                     commit;
                     mutex_unlock('out$log_session_step_task');
                 else
-                    dbms_output.put_line(to_char(systimestamp, 'yyyy-mm-dd hh24:mi:ss.ff6') || ' :' || session_step_task.code);
+                    dbms_output.put_line(to_char(systimestamp, 'yyyy-mm-dd hh24:mi:ss.ff6') || ' : ' || session_step_task.code);
                 end if;
             when 'done' then
                 if logger.session_no is not null then
