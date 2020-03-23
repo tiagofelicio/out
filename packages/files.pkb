@@ -5,16 +5,16 @@ create or replace package body out.files is
     ----------------------------------------------------------------------------------------------------------------------------
 
     procedure copy(target_filename varchar2, source_filename varchar2, options varchar2 default null) is
-        statement types.statement;
+        statements types.statements;
     begin
         logger.session_step('start');
-        statement.code := q'[
+        statements(1).bash.code := q'[
             cp $files.copy.(options).recursive $files.copy.source_filename $files.copy.target_filename
         ]';
         core.set('files.copy.(options).recursive', options);
         core.set('files.copy.source_filename', source_filename);
         core.set('files.copy.target_filename', target_filename);
-        execute.shell(statement);
+        core.execute(statements);
         logger.session_step('done');
     exception
         when others then
@@ -22,15 +22,15 @@ create or replace package body out.files is
     end copy;
 
     procedure move(target_filename varchar2, source_filename varchar2, options varchar2 default null) is
-        statement types.statement;
+        statements types.statements;
     begin
         logger.session_step('start');
-        statement.code := q'[
+        statements(1).bash.code := q'[
             mv $files.move.source_filename $files.move.target_filename
         ]';
         core.set('files.move.source_filename', source_filename);
         core.set('files.move.target_filename', target_filename);
-        execute.shell(statement);
+        core.execute(statements);
         logger.session_step('done');
     exception
         when others then
@@ -38,16 +38,16 @@ create or replace package body out.files is
     end move;
 
     procedure remove(filename varchar2, options varchar2 default null) is
-        statement types.statement;
+        statements types.statements;
     begin
         logger.session_step('start');
-        statement.code := q'[
+        statements(1).bash.code := q'[
             rm $files.remove.(options).force $files.remove.(options).recursive $files.remove.filename
         ]';
         core.set('files.remove.(options).force', options);
         core.set('files.remove.(options).recursive', options);
         core.set('files.remove.filename', filename);
-        execute.shell(statement);
+        core.execute(statements);
         logger.session_step('done');
     exception
         when others then
@@ -55,15 +55,15 @@ create or replace package body out.files is
     end remove;
 
     procedure wait(filename varchar2, options varchar2 default null) is
-        statement types.statement;
+        statements types.statements;
     begin
         logger.session_step('start');
-        statement.code := q'[
+        statements(1).bash.code := q'[
             while [ ! -f $files.wait.filename ]; do sleep $files.wait.(options).polling_interval; done
         ]';
         core.set('files.wait.(options).polling_interval', options);
         core.set('files.wait.filename', filename);
-        execute.shell(statement);
+        core.execute(statements);
         logger.session_step('done');
     exception
         when others then
@@ -77,18 +77,18 @@ create or replace package body out.files is
         core.set('files.load.(options).file_format', options);
         case core.get('files.load.(options).file_format')
             when 'delimited' then
-                statements(1).code := q'[
+                statements(1).ignore_error := -04043;
+                statements(1).plsql.code := q'[
                     drop directory $files.load.{directory_name}
                 ]';
-                statements(1).ignore_error := -04043;
-                statements(2).code := q'[
+                statements(2).plsql.code := q'[
                     create directory $files.load.{directory_name} as '$files.load.{directory_path}'
                 ]';
-                statements(3).code := q'[
+                statements(3).ignore_error := -00942;
+                statements(3).plsql.code := q'[
                     drop table $files.load.{external_table_name}
                 ]';
-                statements(3).ignore_error := -00942;
-                statements(4).code := q'[
+                statements(4).plsql.code := q'[
                     create table $files.load.{external_table_name} (
                         $files.load.{external_table_columns}
                     )
@@ -112,24 +112,24 @@ create or replace package body out.files is
                     parallel
                     reject limit 0
                 ]';
-                statements(5).code := q'[
+                statements(5).ignore_error := -00942;
+                statements(5).plsql.code := q'[
                     truncate table $files.load.work_table_name drop all storage
                 ]';
-                statements(5).ignore_error := -00942;
-                statements(6).code := q'[
+                statements(6).ignore_error := -00942;
+                statements(6).plsql.code := q'[
                     drop table $files.load.work_table_name purge
                 ]';
-                statements(6).ignore_error := -00942;
-                statements(7).code := q'[
+                statements(7).plsql.code := q'[
                     create global temporary table $files.load.work_table_name on commit preserve rows parallel as
                     select
                         $files.load.{work_table_columns}
                     from $files.load.{external_table_name}
                 ]';
-                statements(8).code := q'[
+                statements(8).plsql.code := q'[
                     drop table $files.load.{external_table_name} purge
                 ]';
-                statements(9).code := q'[
+                statements(9).plsql.code := q'[
                     drop directory $files.load.{directory_name}
                 ]';
                 core.set('files.load.{directory_name}', work_table_name);
@@ -145,25 +145,29 @@ create or replace package body out.files is
                 core.set('files.load.filename', filename);
                 core.set('files.load.work_table_name', work_table_name);
             when 'large object' then
-                statements(1).code := q'[
+                statements(1).ignore_error := -04043;
+                statements(1).plsql.code := q'[
                     drop directory $files.load.{directory_name}
                 ]';
-                statements(1).ignore_error := -04043;
-                statements(2).code := q'[
+                statements(2).plsql.code := q'[
                     create directory $files.load.{directory_name} as '$files.load.{directory_path}'
                 ]';
-                statements(3).code := q'[
-                    drop table $files.load.table_name purge
-                ]';
                 statements(3).ignore_error := -00942;
-                statements(4).code := q'[
+                statements(3).plsql.code := q'[
+                    truncate table $files.load.work_table_name drop all storage
+                ]';
+                statements(4).ignore_error := -00942;
+                statements(4).plsql.code := q'[
+                    drop table $files.load.work_table_name purge
+                ]';
+                statements(5).plsql.code := q'[
                     create global temporary table $files.load.work_table_name (
                         content clob
                     )
                     on commit preserve rows
                     parallel
                 ]';
-                statements(5).code := q'[
+                statements(6).plsql.code := q'[
                     declare
                         l_bfile bfile;
                         l_clob clob;
@@ -193,36 +197,36 @@ create or replace package body out.files is
                             raise;
                     end;
                 ]';
-                statements(6).code := q'[
+                statements(7).plsql.code := q'[
                     drop directory $files.load.{directory_name}
                 ]';
                 core.set('files.load.{directory_name}', work_table_name);
                 core.set('files.load.{directory_path}', filename);
                 core.set('files.load.filename', filename);
-                core.set('files.load.table_name', work_table_name);
+                core.set('files.load.work_table_name', work_table_name);
         end case;
-        execute.plsql(statements);
+        core.execute(statements);
         logger.session_step('done');
     exception
         when others then
             logger.session_step('error', sqlerrm);
     end load;
 
-    procedure unload(filename varchar2, table_name varchar2, options varchar2 default null) is
+    procedure unload(filename varchar2, work_table_name varchar2, options varchar2 default null) is
         statements types.statements;
     begin
         logger.session_step('start');
         core.set('files.unload.(options).file_format', options);
         case core.get('files.unload.(options).file_format')
             when 'delimited' then
-                statements(1).code := q'[
+                statements(1).ignore_error := -04043;
+                statements(1).plsql.code := q'[
                     drop directory $files.unload.{directory_name}
                 ]';
-                statements(1).ignore_error := -04043;
-                statements(2).code := q'[
+                statements(2).plsql.code := q'[
                     create directory $files.unload.{directory_name} as '$files.unload.{directory_path}'
                 ]';
-                statements(3).code := q'[
+                statements(3).plsql.code := q'[
                     declare
                         buffer varchar2(32767);
                         column_count pls_integer;
@@ -233,7 +237,7 @@ create or replace package body out.files is
                     begin
                         execute immediate 'alter session set nls_date_format = ''$files.unload.(options).date_format''';
                         table_cursor := dbms_sql.open_cursor;
-                        dbms_sql.parse(table_cursor, 'select * from $files.unload.table_name', dbms_sql.native);
+                        dbms_sql.parse(table_cursor, 'select * from $files.unload.work_table_name', dbms_sql.native);
                         dbms_sql.describe_columns2(table_cursor, column_count, columns_description);
                         for i in 1 .. column_count loop
                             dbms_sql.define_column(table_cursor, i, buffer, 32767);
@@ -287,7 +291,7 @@ create or replace package body out.files is
                             raise;
                     end;
                 ]';
-                statements(4).code := q'[
+                statements(4).plsql.code := q'[
                     drop directory $files.unload.{directory_name}
                 ]';
                 core.set('files.unload.{directory_name}', filename);
@@ -299,9 +303,9 @@ create or replace package body out.files is
                 core.set('files.unload.(options).record_separator', options);
                 core.set('files.unload.(options).text_delimiter', options);
                 core.set('files.unload.filename', filename);
-                core.set('files.unload.table_name', table_name);
+                core.set('files.unload.work_table_name', work_table_name);
         end case;
-        execute.plsql(statements);
+        core.execute(statements);
         logger.session_step('done');
     exception
         when others then
@@ -309,10 +313,10 @@ create or replace package body out.files is
     end unload;
 
     procedure zip(archive_name varchar2, filename varchar2, options varchar2 default null) is
-        statement types.statement;
+        statements types.statements;
     begin
         logger.session_step('start');
-        statement.code := q'[
+        statements(1).bash.code := q'[
             zip $files.zip.(options).keep_input_files $files.zip.(options).compress_level $files.zip.(options).password $files.zip.(options).recursive $files.zip.archive_name $files.zip.filename
         ]';
         core.set('files.zip.(options).compress_level', options);
@@ -321,7 +325,7 @@ create or replace package body out.files is
         core.set('files.zip.(options).recursive', options);
         core.set('files.zip.archive_name', archive_name);
         core.set('files.zip.filename', filename);
-        execute.shell(statement);
+        core.execute(statements);
         logger.session_step('done');
     exception
         when others then
@@ -329,17 +333,17 @@ create or replace package body out.files is
     end zip;
 
     procedure unzip(directory_name varchar2, archive_name varchar2, options varchar2 default null) is
-        statement types.statement;
+        statements types.statements;
     begin
         logger.session_step('start');
-        statement.code := q'[
+        statements(1).bash.code := q'[
             unzip -o $files.unzip.(options).password $files.unzip.archive_name -d $files.unzip.directory_name && if [ "false" == "$files.unzip.(options).keep_input_files" ]; then rm $files.unzip.archive_name; fi
         ]';
         core.set('files.unzip.(options).keep_input_files', options);
         core.set('files.unzip.(options).password', options);
         core.set('files.unzip.archive_name', archive_name);
         core.set('files.unzip.directory_name', directory_name);
-        execute.shell(statement);
+        core.execute(statements);
         logger.session_step('done');
     exception
         when others then

@@ -18,17 +18,21 @@ create or replace package body metadata.examples is
     end data_integration_test;
 
     procedure files_test is
+        aa text;
     begin
         out.process('start');
-        out.bind('landing_zone', macro => landing_zone);
-        out.utilities.shell('rm -rf #landing_zone/*');
-        out.utilities.shell('touch #landing_zone/file_1.txt');
+        aa := out.utilities.bash('ech aaa', q'[
+            ignore errors => true
+        ]');
+        out.bind('landing_zone', macro => out.utilities.bash('echo ' || landing_zone));
+        out.utilities.bash('rm -rf #landing_zone/*');
+        out.utilities.bash('touch #landing_zone/file_1.txt');
         out.files.copy('#landing_zone/file_1_1.txt', '#landing_zone/file_1.txt');
-        out.utilities.shell('mkdir -p #landing_zone/folder1');
+        out.utilities.bash('mkdir -p #landing_zone/folder1');
         out.files.copy('#landing_zone/folder1_1', '#landing_zone/folder1', q'[
             recursive => true
         ]');
-        out.utilities.shell('mkdir -p #landing_zone/folder2/folder2/folder2');
+        out.utilities.bash('mkdir -p #landing_zone/folder2/folder2/folder2');
         out.files.copy('#landing_zone/folder2_1', '#landing_zone/folder2', q'[
             recursive => true
         ]');
@@ -42,7 +46,7 @@ create or replace package body metadata.examples is
         out.files.remove('#landing_zone/folder1_1', q'[
             recursive => true
         ]');
-        out.utilities.shell('(sleep 10; touch #landing_zone/trigger) &');
+        out.utilities.bash('(sleep 10; touch #landing_zone/trigger) &');
         out.files.wait('#landing_zone/trigger');
         out.files.wait('#landing_zone/trigger', q'[
             polling interval => 10
@@ -62,22 +66,8 @@ create or replace package body metadata.examples is
         out.files.unzip('/', '#landing_zone/folder.zip', q'[
             keep input files => true
         ]');
-        out.files.unload('/home/oracle/all_users.csv', 'sys.all_users', q'[
+        out.files.unload('/home/oracle/all_users.csv', 'all_users', q'[
             date format => yyyymmddhh24miss
-        ]');
-        out.files.load('stage.file_all_users', '/home/oracle/all_users.csv', q'[
-            username varchar2(128)
-            user_id number
-            created date mask "yyyymmddhh24miss"
-            common varchar2(3)
-            oracle_maintained varchar2(1)
-            inherited varchar2(3)
-            default_collation varchar2(100)
-            implicit varchar2(3)
-            all_shard varchar2(3)
-        ]');
-        out.files.load('stage.file_lob', '/home/oracle/all_users.csv', null, q'[
-            file format => large object
         ]');
         out.process('done');
     exception
@@ -89,18 +79,18 @@ create or replace package body metadata.examples is
     begin
         out.process('start');
         out.bind('landing_zone', macro => landing_zone);
-        out.utilities.shell('rm -rf #landing_zone/*');
-        out.utilities.shell('touch #landing_zone/file_1.txt');
-        out.utilities.shell('echo "line 1" > #landing_zone/file_2.txt');
-        out.utilities.shell('echo "line 2" >> #landing_zone/file_2.txt');
-        out.utilities.shell('echo "line 3" >> #landing_zone/file_2.txt');
-        out.utilities.shell('echo "line 4" >> #landing_zone/file_2.txt');
-        out.utilities.shell('mkdir -p #landing_zone/folder1/folder2/folder3');
-        dbms_output.put_line('ls #landing_zone ->' || out.utilities.shell('ls #landing_zone'));
-        dbms_output.put_line('cat #landing_zone/file_1.txt ->' || out.utilities.shell('cat #landing_zone/file_1.txt'));
-        dbms_output.put_line('cat #landing_zone/file_2.txt ->' || out.utilities.shell('cat #landing_zone/file_2.txt'));
-        dbms_output.put_line('ls #landing_zone/folder1/folder2 ->' || out.utilities.shell('ls #landing_zone/folder1/folder2/folder3'));
-        dbms_output.put_line('cat #landing_zone/aaa.txt (ignore errors) ->' || out.utilities.shell('cat #landing_zone/aaa.txt', q'[
+        out.utilities.bash('rm -rf #landing_zone/*');
+        out.utilities.bash('touch #landing_zone/file_1.txt');
+        out.utilities.bash('echo "line 1" > #landing_zone/file_2.txt');
+        out.utilities.bash('echo "line 2" >> #landing_zone/file_2.txt');
+        out.utilities.bash('echo "line 3" >> #landing_zone/file_2.txt');
+        out.utilities.bash('echo "line 4" >> #landing_zone/file_2.txt');
+        out.utilities.bash('mkdir -p #landing_zone/folder1/folder2/folder3');
+        dbms_output.put_line('ls #landing_zone ->' || out.utilities.bash('ls #landing_zone'));
+        dbms_output.put_line('cat #landing_zone/file_1.txt ->' || out.utilities.bash('cat #landing_zone/file_1.txt'));
+        dbms_output.put_line('cat #landing_zone/file_2.txt ->' || out.utilities.bash('cat #landing_zone/file_2.txt'));
+        dbms_output.put_line('ls #landing_zone/folder1/folder2 ->' || out.utilities.bash('ls #landing_zone/folder1/folder2/folder3'));
+        dbms_output.put_line('cat #landing_zone/aaa.txt (ignore errors) ->' || out.utilities.bash('cat #landing_zone/aaa.txt', q'[
             ignore errors => true
         ]'));
         out.process('done');
@@ -167,6 +157,13 @@ create or replace package body metadata.examples is
             surrogate key => sk
             partition name => p_all
             method => merge
+        ]');
+        out.files.unload('#landing_zone/#dh_resource.psv', 'dh_world_cities', q'[
+            field separator => |
+            file format => delimited
+            generate header => false
+            record separator => \n
+            text delimiter => "
         ]');
         out.files.remove('#landing_zone/#dh_resource.csv');
         out.data_integration.drop_table('dh_world_cities_01');

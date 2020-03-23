@@ -10,9 +10,9 @@ create or replace package out.core authid definer is
 
     function isset(property_name varchar2) return boolean;
 
-    procedure unset(property_name varchar2 default null);
+    function execute(statement in out nocopy types.statement, unset boolean default true) return anydata;
 
-    function solve(text varchar2) return varchar2;
+    procedure execute(statements in out nocopy types.statements, unset boolean default true);
 
 end core;
 /
