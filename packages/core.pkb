@@ -8,6 +8,44 @@ create or replace package body out.core is
     variables types.map;
 
     ----------------------------------------------------------------------------------------------------------------------------
+    -- .parse properties and variables -----------------------------------------------------------------------------------------
+    ----------------------------------------------------------------------------------------------------------------------------
+
+    procedure parse(text in out nocopy varchar2) is
+        property_name types.text;
+        property_value types.text;
+        variable_name types.text;
+        variable_value types.text;
+    begin
+        property_name := properties.first;
+        while property_name is not null loop
+            property_value := properties(property_name);
+            text := replace(text, property_name, property_value);
+            property_name := properties.next(property_name);
+        end loop;
+        variable_name := variables.first;
+        while variable_name is not null loop
+            variable_value := variables(variable_name);
+            text := replace(text, variable_name, variable_value);
+            variable_name := variables.next(variable_name);
+        end loop;
+    end parse;
+
+    function parse_variables(text varchar2) return varchar2 is
+        parsed_text types.text;
+        variable_name types.text;
+        variable_value types.text;
+    begin
+        parsed_text := text;
+        while variable_name is not null loop
+            variable_value := variables(variable_name);
+            parsed_text := replace(parsed_text, variable_name, variable_value);
+            variable_name := variables.next(variable_name);
+        end loop;
+        return parsed_text;
+    end parse_variables;
+
+    ----------------------------------------------------------------------------------------------------------------------------
     ----------------------------------------------------------------------------------------------------------------------------
     ----------------------------------------------------------------------------------------------------------------------------
 
@@ -37,7 +75,7 @@ create or replace package body out.core is
             ]' || case when column_list_not_in is not null then 'and column_name not in (' || cleansing(column_list_not_in) || ')' end || q'[
             order by column_id
         ]';
-        open columns_cursor for plsql using solve(table_name);
+        open columns_cursor for plsql using parse_variables(table_name);
         loop
             fetch columns_cursor into column_name;
             exit when columns_cursor%notfound;
@@ -57,6 +95,141 @@ create or replace package body out.core is
         option_value := lower(trim(regexp_substr(options, replace(option_name, ' ', '[[:space:]]+') || '[[:space:]]+=>[[:space:]]+(.+)', 1, 1, 'mix', 1)));
         return nvl(option_value, default_value);
     end get_option;
+
+    ----------------------------------------------------------------------------------------------------------------------------
+    -- .languages --------------------------------------------------------------------------------------------------------------
+    ----------------------------------------------------------------------------------------------------------------------------
+
+    function bash(statement varchar2) return varchar2 is
+    language java
+    name 'OUTTools.bash(java.lang.String) return java.lang.String';
+
+    function bash(statement in out nocopy types.bash_lang, work in out number) return anydata is
+        exit_value pls_integer;
+        output types.text;
+        stderr types.text;
+        stdout types.text;
+    begin
+        output := bash(statement.code);
+        exit_value := to_number(regexp_substr(output, '(^|~)([^~]*)', 1, 1, null, 2));
+        stderr := regexp_substr(output, '(^|~)([^~]*)', 1, 3, null, 2);
+        stdout := regexp_substr(output, '(^|~)([^~]*)', 1, 2, null, 2);
+        if exit_value <> 0 then
+            raise_application_error(-20000, stderr);
+        end if;
+        work := 0;
+        return anydata.ConvertVarchar2(stdout);
+    end bash;
+
+    function plsql(statement in out nocopy types.plsql_lang, work in out number) return anydata is
+        statement_cursor pls_integer;
+        statement_column_count pls_integer;
+        statement_column_description dbms_sql.desc_tab2;
+        result anydata := anydata.ConvertRaw(null);
+        result_bfile bfile;
+        result_binary_double binary_double;
+        result_binary_float binary_float;
+        result_blob blob;
+        result_char char(2000);
+        result_clob clob;
+        result_date date;
+        result_inverval_day_to_second interval day to second;
+        result_inverval_year_to_month interval year to month;
+        result_nchar nchar(2000);
+        result_nclob nclob;
+        result_number number;
+        result_nvarchar2 nvarchar2(4000);
+        result_raw raw(2000);
+        result_timestamp timestamp;
+        result_timestamp_with_local_time_zone timestamp with local time zone;
+        result_timestamp_with_time_zone timestamp with time zone;
+        result_urowid urowid;
+        result_varchar varchar(4000);
+        result_varchar2 varchar2(4000);
+    begin
+        case statement.to_fetch
+            when false then
+                execute immediate statement.code;
+                work := sql%rowcount;
+                commit;
+            when true then
+                statement_cursor := dbms_sql.open_cursor;
+                dbms_sql.parse(statement_cursor, statement.code, dbms_sql.native);
+                dbms_sql.describe_columns2(statement_cursor, statement_column_count, statement_column_description);
+                dbms_sql.close_cursor(statement_cursor);
+                case statement_column_description(1).col_type
+                    when dbms_types.typecode_bfile then
+                        execute immediate statement.code into result_bfile;
+                        result := anydata.ConvertBfile(result_bfile);
+                    when dbms_types.typecode_bdouble then
+                        execute immediate statement.code into result_binary_double;
+                        result := anydata.ConvertBDouble(result_binary_double);
+                    when dbms_types.typecode_bfloat then
+                        execute immediate statement.code into result_binary_float;
+                        result := anydata.ConvertBFloat(result_binary_float);
+                    when dbms_types.typecode_blob then
+                        execute immediate statement.code into result_blob;
+                        result := anydata.ConvertBlob(result_blob);
+                    when dbms_types.typecode_char then
+                        execute immediate statement.code into result_char;
+                        result := anydata.ConvertChar(result_char);
+                    when dbms_types.typecode_clob then
+                        execute immediate statement.code into result_clob;
+                        result := anydata.ConvertClob(result_clob);
+                    when dbms_types.typecode_date then
+                        execute immediate statement.code into result_date;
+                        result := anydata.ConvertDate(result_date);
+                    when dbms_types.typecode_interval_ds then
+                        execute immediate statement.code into result_inverval_day_to_second;
+                        result := anydata.ConvertIntervalDS(result_inverval_day_to_second);
+                    when dbms_types.typecode_interval_ym then
+                        execute immediate statement.code into result_inverval_year_to_month;
+                        result := anydata.ConvertIntervalYM(result_inverval_year_to_month);
+                    when dbms_types.typecode_nchar then
+                        execute immediate statement.code into result_nchar;
+                        result := anydata.ConvertNChar(result_nchar);
+                    when dbms_types.typecode_nclob then
+                        execute immediate statement.code into result_nclob;
+                        result := anydata.ConvertNClob(result_nclob);
+                    when dbms_types.typecode_number then
+                        execute immediate statement.code into result_number;
+                        result := anydata.ConvertNumber(result_number);
+                    when dbms_types.typecode_nvarchar2 then
+                        execute immediate statement.code into result_nvarchar2;
+                        result := anydata.ConvertNVarchar2(result_nvarchar2);
+                    when dbms_types.typecode_raw then
+                        execute immediate statement.code into result_raw;
+                        result := anydata.ConvertRaw(result_raw);
+                    when dbms_types.typecode_timestamp then
+                        execute immediate statement.code into result_timestamp;
+                        result := anydata.ConvertTimestamp(result_timestamp);
+                    when dbms_types.typecode_timestamp_ltz then
+                        execute immediate statement.code into result_timestamp_with_local_time_zone;
+                        result := anydata.ConvertTimestampLTZ(result_timestamp_with_local_time_zone);
+                    when dbms_types.typecode_timestamp_tz then
+                        execute immediate statement.code into result_timestamp_with_time_zone;
+                        result := anydata.ConvertTimestampTZ(result_timestamp_with_time_zone);
+                    when dbms_types.typecode_urowid then
+                        execute immediate statement.code into result_urowid;
+                        result := anydata.ConvertURowid(result_urowid);
+                    when dbms_types.typecode_varchar then
+                        execute immediate statement.code into result_varchar;
+                        result := anydata.ConvertVarchar2(result_varchar);
+                    when dbms_types.typecode_varchar2 then
+                        execute immediate statement.code into result_varchar2;
+                        result := anydata.ConvertVarchar2(result_varchar2);
+                end case;
+                work := 0;
+        end case;
+        return result;
+    exception
+        when others then
+            rollback;
+            if dbms_sql.is_open(statement_cursor) then
+                dbms_sql.close_cursor(statement_cursor);
+            end if;
+            raise;
+    end plsql;
 
     ----------------------------------------------------------------------------------------------------------------------------
     ----------------------------------------------------------------------------------------------------------------------------
@@ -84,9 +257,9 @@ create or replace package body out.core is
     procedure set(property_name varchar2, arg1 varchar2 default null, arg2 varchar2 default null, arg3 varchar2 default null) is
         option_value types.text;
         property_value types.text;
-        i_arg1 types.text := case when arg1 is not null then solve(arg1) end;
-        i_arg2 types.text := case when arg2 is not null then solve(arg2) end;
-        i_arg3 types.text := case when arg3 is not null then solve(arg3) end;
+        i_arg1 types.text := case when arg1 is not null then parse_variables(arg1) end;
+        i_arg2 types.text := case when arg2 is not null then parse_variables(arg2) end;
+        i_arg3 types.text := case when arg3 is not null then parse_variables(arg3) end;
     begin
         case property_name
         ------------------------------------------------------------------------------------------------------------------------ < data_integration.check_unique_key
@@ -351,7 +524,7 @@ create or replace package body out.core is
                 property_value := i_arg1;
         ------------------------------------------------------------------------------------------------------------------------ < files.unload
             when 'files.unload.{directory_name}' then
-                property_value := substr('out$_' || regexp_substr(regexp_substr(i_arg1, '[^/]+$'), '[^\.]+', 1, 1), 1, 128);
+                property_value := substr('out$_' || regexp_replace(regexp_substr(regexp_substr(i_arg1, '[^/]+$'), '[^\.]+', 1, 1), '[^a-zA-Z0-9]+'), 1, 128);
             when 'files.unload.{directory_path}' then
                 property_value := replace(i_arg1, '/' || regexp_substr(i_arg1, '[^/]+$'));
             when 'files.unload.{nls_date_format}' then
@@ -359,15 +532,15 @@ create or replace package body out.core is
             when 'files.unload.(options).date_format' then
                 option_value := get_option('date format', i_arg1, 'yyyy/mm/dd hh24:mi:ss');
                 property_value := option_value;
-            when 'files.unload.(options).field_separator' then
-                option_value := get_option('field separator', i_arg1, ',');
-                property_value := option_value;
             when 'files.unload.(options).file_format' then
                 option_value := get_option('file format', i_arg1, 'delimited');
                 case option_value
                     when 'delimited' then
                         property_value := 'delimited';
                 end case;
+            when 'files.unload.(options).field_separator' then
+                option_value := get_option('field separator', i_arg1, ',');
+                property_value := option_value;
             when 'files.unload.(options).generate_header' then
                 option_value := get_option('generate header', i_arg1, 'true');
                 case option_value
@@ -384,7 +557,8 @@ create or replace package body out.core is
                 property_value := option_value;
             when 'files.unload.filename' then
                 property_value := i_arg1;
-            when 'files.unload.table_name' then
+            when 'files.unload.work_table_name' then
+                check_work_table(i_arg1);
                 property_value := i_arg1;
         ------------------------------------------------------------------------------------------------------------------------ < files.unzip
             when 'files.unzip.(options).keep_input_files' then
@@ -435,6 +609,15 @@ create or replace package body out.core is
                 property_value := i_arg1;
             when 'internet.http_get.url' then
                 property_value := i_arg1;
+        ------------------------------------------------------------------------------------------------------------------------ < utilities.bash
+            when 'utilities.bash.(options).ignore_errors' then
+                option_value := get_option('ignore errors', i_arg1, 'false');
+                case option_value
+                    when 'false' then
+                        property_value := 'false';
+                    when 'true' then
+                        property_value := 'true';
+                end case;
         end case;
         properties('$' || property_name) := property_value;
     exception
@@ -451,37 +634,63 @@ create or replace package body out.core is
         return properties('$' || property_name) is not null;
     end isset;
 
-    procedure unset(property_name varchar2 default null) is
+    function execute(statement in out nocopy types.statement, unset boolean default true) return anydata is
+        output anydata := anydata.ConvertRaw(null);
+        work number := 0;
     begin
-        if property_name is null then
-            properties.delete;
-        else
-            properties.delete('#' || property_name);
+        parse(statement.plsql.code);
+        parse(statement.bash.code);
+        if statement.log then
+            logger.session_step_task('start', code => coalesce(statement.plsql.code, statement.bash.code));
         end if;
-    end unset;
+        case
+            when statement.plsql.code is not null then
+                output := plsql(statement.plsql, work);
+            when statement.bash.code is not null then
+                output := bash(statement.bash, work);
+            else
+                raise_application_error(-20000, 'Unrecognized language.');
+        end case;
+        if unset then
+            properties.delete;
+        end if;
+        if statement.log then
+            logger.session_step_task('done', work => work);
+        end if;
+        return output;
+    exception
+        when others then
+            if unset then
+                properties.delete;
+            end if;
+            if statement.ignore_error = sqlcode or statement.ignore_error is null then
+                if statement.log then
+                    logger.session_step_task('warning', error => sqlerrm);
+                end if;
+                return output;
+            else
+                if statement.log then
+                    logger.session_step_task('error', error => sqlerrm);
+                else
+                    raise;
+                end if;
+            end if;
+    end execute;
 
-    function solve(text varchar2) return varchar2 is
-        solved_text types.text;
-        property_name types.text;
-        property_value types.text;
-        variable_name types.text;
-        variable_value types.text;
+    procedure execute(statements in out nocopy types.statements, unset boolean default true) is
+        output anydata;
     begin
-        solved_text := text;
-        property_name := properties.first;
-        while property_name is not null loop
-            property_value := properties(property_name);
-            solved_text := replace(solved_text, property_name, property_value);
-            property_name := properties.next(property_name);
+        for i in statements.first .. statements.last loop
+            if statements(i).execute then
+                output := execute(statements(i), unset => false);
+            end if;
         end loop;
-        variable_name := variables.first;
-        while variable_name is not null loop
-            variable_value := variables(variable_name);
-            solved_text := replace(solved_text, variable_name, variable_value);
-            variable_name := variables.next(variable_name);
-        end loop;
-        return solved_text;
-    end solve;
+        properties.delete;
+    exception
+        when others then
+            properties.delete;
+            raise;
+    end execute;
 
     ----------------------------------------------------------------------------------------------------------------------------
     ----------------------------------------------------------------------------------------------------------------------------

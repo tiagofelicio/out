@@ -14,6 +14,11 @@ quota unlimited on &3;
 grant connect to metadata;
 grant create procedure to metadata;
 
+grant select on out.sessions to metadata;
+grant select on out.session_steps to metadata;
+grant select on out.session_step_tasks to metadata;
+grant select on out.version to metadata;
+
 grant execute on out.bind to metadata;
 grant execute on out.process to metadata;
 grant execute on out.data_integration to metadata;

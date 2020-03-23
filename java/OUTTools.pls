@@ -5,15 +5,13 @@ import java.io.InputStreamReader;
 
 public class OUTTools {
 
+    public static final String BASH_OUTPUT_SEPARATOR = "~";
+
     public static final String[] ENVIRONMENT = { "PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin" };
 
-    public static final String SHELL_OUTPUT_SEPARATOR() {
-        return "~";
-    }
-
-    public static String shell(String command) {
+    public static String bash(String command) {
         Runtime runtime = Runtime.getRuntime();
-        String[] commands = { "sh", "-c", command };
+        String[] commands = { "bash", "-c", command };
         Process process = null;
         BufferedReader reader = null;
         String line = null;
@@ -40,7 +38,7 @@ public class OUTTools {
                 reader.close();
             } catch (Exception e) { }
         }
-        return exitValue + SHELL_OUTPUT_SEPARATOR() + stdout.toString() + SHELL_OUTPUT_SEPARATOR() + stderr.toString();
+        return exitValue + BASH_OUTPUT_SEPARATOR + stdout.toString() + BASH_OUTPUT_SEPARATOR + stderr.toString();
     }
 
 };

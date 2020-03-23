@@ -6,12 +6,13 @@
 -- Last Modified : 2020/03/12
 -- ----------------------------------------------------------------------------------------------------------------------------
 
+set define off;
+
 create user out identified by &2
 default tablespace &3
 temporary tablespace &4
 quota unlimited on &3;
 
-grant connect to out;
 grant resource to out;
 grant create any directory to out;
 grant drop any directory to out;

@@ -10,7 +10,7 @@ create or replace package out.files authid current_user is
 
     procedure load(work_table_name varchar2, filename varchar2, attributes varchar2, options varchar2 default null);
 
-    procedure unload(filename varchar2, table_name varchar2, options varchar2 default null);
+    procedure unload(filename varchar2, work_table_name varchar2, options varchar2 default null);
 
     procedure zip(archive_name varchar2, filename varchar2, options varchar2 default null);
 
