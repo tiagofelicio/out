@@ -28,9 +28,9 @@ grant execute on out.internet to metadata;
 grant execute on out.utilities to metadata;
 
 create user dhub identified by &2
-default tablespace &3
+default tablespace &4
 temporary tablespace &5
-quota unlimited on &3;
+quota unlimited on &4;
 
 grant connect to dhub;
 grant resource to dhub;
