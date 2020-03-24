@@ -38,7 +38,12 @@ end;
 
 create table out.version (
     banner varchar2(150 byte)
-) pctfree 0 compress nologging noparallel;
+)
+pctfree 0
+compress
+nologging
+noparallel
+tablespace &3;
 
 insert into out.version (banner) values ('Oracle Unified Toolkit for Oracle Database');
 insert into out.version (banner) values ('Developed by TAF');
@@ -113,6 +118,19 @@ lob(error) store as securefile (
 )
 noparallel
 tablespace &3;
+
+begin
+    dbms_stats.gather_schema_stats(
+        ownname => 'out',
+        estimate_percent => dbms_stats.auto_sample_size,
+        method_opt => 'for all columns size auto',
+        degree => dbms_stats.auto_degree,
+        granularity => 'auto',
+        cascade => dbms_stats.auto_cascade,
+        no_invalidate => dbms_stats.auto_invalidate
+    );
+end;
+/
 
 @&1/out/java/OUTTools.pls
 

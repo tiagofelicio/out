@@ -1,4 +1,4 @@
-create or replace package body metadata.examples is
+create or replace package body metadata.hub is
 
     subtype text is varchar2(100);
 
@@ -177,5 +177,5 @@ create or replace package body metadata.examples is
             out.process('error');
     end dh_world_cities;
 
-end examples;
+end hub;
 /

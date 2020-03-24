@@ -1,61 +1,118 @@
 create or replace package metadata.api authid current_user is
     ------------------------------------------------------------------------------------------------------------------------
-    -- out.bind
+    -- out.bind(variable_name, date_value, number_value, text_value, macro)
+    --    | usage :
+    --    |         out.bind('var1', date_value => trunc(sysdate))
+    --    |         out.bind('var2', number_value => 3)
+    --    |         out.bind('var4', text_value => 'text')
+    --    |         out.bind('var4', macro => 'macro')
     --    | 
+    -- out.process(status)
+    --    | usage :
+    --    |         out.process('start')
+    --    |         out.process('done')
+    --    |         out.process('error')
+    --    |         out.process('warning')
     --    | 
-    -- out.process
-    --    | 
+    -- out.data_integration.check_not_null
+    --    | usage :
+    --    |         out.data_integration.check_not_null('work_table', 'column1')
     --    | 
     -- out.data_integration.check_unique_key
+    --    | usage :
+    --    |         out.data_integration.check_unique_key('work_table', 'column1, column2')
     --    | 
+    -- out.data_integration.check_primary_key
+    --    | usage :
+    --    |         out.data_integration.check_primary_key('work_table', 'column1, column2')
     --    | 
     -- out.data_integration.create_table
-    --    | 
+    --    | usage :
+    --    |         out.data_integration.create_table('work_table', q'[
+    --    |             select
+    --    |                 all_tables.owner,
+    --    |                 all_tables.table_name,
+    --    |                 all_tables.tablespace_name,
+    --    |                 all_tab_columns.column_name,
+    --    |                 all_tab_columns.column_id,
+    --    |                 #var1 bind_date,
+    --    |                 #var2 bind_number,
+    --    |                 #var3 bind_text,
+    --    |                 '#var4' bind_macro,
+    --    |             from all_tables
+    --    |             inner join all_tab_columns on
+    --    |                 all_tables.owner = all_tab_columns.owner and
+    --    |                 all_tables.table_name = all_tab_columns.table_name
+    --    |         ]')
     --    | 
     -- out.data_integration.drop_table
-    --    | 
+    --    | usage :
+    --    |         out.data_integration.drop_table('work_table');
     --    | 
     -- out.data_integration.control_append
-    --    | 
+    --    | usage :
+    --    |         out.data_integration.control_append('schema.target_table', 'work_table', q'[
+    --    |             partition name => 
+    --    |             truncate partition => 
+    --    |             truncate table => 
+    --    |         ]')
     --    | 
     -- out.data_integration.incremental_update
-    --    | 
+    --    | usage :
+    --    |         out.data_integration.incremental_update('schema.target_table', 'work_table', q'[
+    --    |             method => (full join / merge)
+    --    |             natural key => 
+    --    |             partition name => 
+    --    |             surrogate key => 
+    --    |         ]')       
     --    | 
     -- out.files.copy
-    --    | 
+    --    | usage :
+    --    |        
     --    | 
     -- out.files.move
-    --    | 
+    --    | usage :
+    --    |        
     --    | 
     -- out.files.remove
-    --    | 
+    --    | usage :
+    --    |        
     --    | 
     -- out.files.wait
-    --    | 
+    --    | usage :
+    --    |        
     --    | 
     -- out.files.load
-    --    | 
+    --    | usage :
+    --    |        
     --    | 
     -- out.files.unload
-    --    | 
+    --    | usage :
+    --    |        
     --    | 
     -- out.files.zip
-    --    | 
-    --    | 
-    -- out.files.unzip
-    --    | 
+    --    | usage :
+    --    |        
     --    | 
     -- out.files.unzip
+    --    | usage :
+    --    |        
     --    | 
+    -- out.files.unzip
+    --    | usage :
+    --    |        
     --    | 
     -- out.internet.http_get
-    --    | 
+    --    | usage :
+    --    |        
     --    | 
     -- out.utilities.bash
-    --    | 
+    --    | usage :
+    --    |        
     --    | 
     -- out.utilities.plsql
-    --    | 
+    --    | usage :
+    --    |        
     --    | 
     ------------------------------------------------------------------------------------------------------------------------
 end api;

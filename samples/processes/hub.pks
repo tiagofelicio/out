@@ -1,4 +1,4 @@
-create or replace package metadata.examples authid current_user is
+create or replace package metadata.hub authid current_user is
 
     procedure dh_covid_19;
 
@@ -8,7 +8,5 @@ create or replace package metadata.examples authid current_user is
 
     procedure dh_world_cities;
 
-    procedure d_currency;
-
-end examples;
+end hub;
 /

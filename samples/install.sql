@@ -3,7 +3,7 @@
 -- Author        : tiago felicio
 -- Description   :
 -- Call Syntax   : @install.sql (base-folder) (password) (metadata-tablespace) (data-tablespace) (temporary-tablespace)
--- Last Modified : 2020/03/13
+-- Last Modified : 2020/03/24
 -- ----------------------------------------------------------------------------------------------------------------------------
 
 create user metadata identified by &2
@@ -13,6 +13,7 @@ quota unlimited on &3;
 
 grant connect to metadata;
 grant create procedure to metadata;
+grant select any table to metadata;
 
 grant select on out.sessions to metadata;
 grant select on out.session_steps to metadata;
@@ -26,10 +27,15 @@ grant execute on out.files to metadata;
 grant execute on out.internet to metadata;
 grant execute on out.utilities to metadata;
 
-create user data identified by &2
+create user dw identified by &2
 default tablespace &4
 temporary tablespace &5
 quota unlimited on &4;
+
+create user hub identified by &2
+default tablespace &3
+temporary tablespace &5
+quota unlimited on &3;
 
 grant connect to data;
 grant resource to data;
@@ -42,7 +48,10 @@ create table data.dh_world_cities (
     resource_name varchar2(250)
 );
 
-@&1/samples/tables.pks
+@&1/samples/tables.sql
 @&1/samples/processes/api.pks
 @&1/samples/processes/examples.pks
 @&1/samples/processes/examples.pkb
+@&1/samples/processes/hub.pks
+@&1/samples/processes/hub.pkb
+

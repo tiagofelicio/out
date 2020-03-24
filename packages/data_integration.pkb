@@ -5,22 +5,18 @@ create or replace package body out.data_integration is
     ----------------------------------------------------------------------------------------------------------------------------
 
     procedure check_not_null(work_table_name varchar2, column_name varchar2) is
-        statement types.statement;
-        null_values number;
+        statements types.statements;
     begin
         logger.session_step('start');
-        statement.plsql.code := q'[
-            select count(1)
-            from $data_integration.check_not_null.work_table_name
-            where $data_integration.check_not_null.column_name is null
+        statements(1).plsql.code := q'[
+            alter table $data_integration.check_not_null.work_table_name add constraint $data_integration.check_not_null.work_table_name_ck check ($data_integration.check_not_null.column_name is not null)
         ]';
-        statement.plsql.to_fetch := true;
+        statements(2).plsql.code := q'[
+            alter table $data_integration.check_not_null.work_table_name drop constraint $data_integration.check_not_null.work_table_name_ck
+        ]';
         core.set('data_integration.check_not_null.column_name', column_name);
         core.set('data_integration.check_not_null.work_table_name', work_table_name);
-        null_values := core.execute(statement).AccessNumber;
-        if null_values <> 0 then
-            raise_application_error(-20000, 'Found ' || to_char(null_values) || ' null values.');
-        end if;
+        core.execute(statements);
         logger.session_step('done');
     exception
         when others then
@@ -28,26 +24,18 @@ create or replace package body out.data_integration is
     end check_not_null;
 
     procedure check_unique_key(work_table_name varchar2, columns_name varchar2) is
-        statement types.statement;
-        duplicated_values number;
+        statements types.statements;
     begin
         logger.session_step('start');
-        statement.plsql.code := q'[
-            select count(1)
-            from (
-                select $data_integration.check_unique_key.columns_name
-                from $data_integration.check_unique_key.work_table_name
-                group by $data_integration.check_unique_key.columns_name
-                having count(1) > 1
-            )
+        statements(1).plsql.code := q'[
+            alter table $data_integration.check_unique_key.work_table_name add constraint $data_integration.check_unique_key.work_table_name_uk unique ($data_integration.check_unique_key.columns_name)
         ]';
-        statement.plsql.to_fetch := true;
+        statements(2).plsql.code := q'[
+            alter table $data_integration.check_unique_key.work_table_name drop constraint $data_integration.check_unique_key.work_table_name_uk
+        ]';
         core.set('data_integration.check_unique_key.columns_name', columns_name);
         core.set('data_integration.check_unique_key.work_table_name', work_table_name);
-        duplicated_values := core.execute(statement).AccessNumber;
-        if duplicated_values <> 0 then
-            raise_application_error(-20000, 'Found ' || to_char(duplicated_values) || ' duplicated values.');
-        end if;
+        core.execute(statements);
         logger.session_step('done');
     exception
         when others then
@@ -79,14 +67,10 @@ create or replace package body out.data_integration is
         logger.session_step('start');
         statements(1).ignore_error := -00942;
         statements(1).plsql.code := q'[
-            truncate table $data_integration.create_table.work_table_name drop all storage
-        ]';
-        statements(2).ignore_error := -00942;
-        statements(2).plsql.code := q'[
             drop table $data_integration.create_table.work_table_name purge
         ]';
-        statements(3).plsql.code := q'[
-            create global temporary table $data_integration.create_table.work_table_name on commit preserve rows parallel as
+        statements(2).plsql.code := q'[
+            create table $data_integration.create_table.work_table_name pctfree 0 nologging compress parallel as
             $data_integration.create_table.statement
         ]';
         core.set('data_integration.create_table.statement', statement);
@@ -103,9 +87,6 @@ create or replace package body out.data_integration is
     begin
         logger.session_step('start');
         statements(1).plsql.code := q'[
-            truncate table $data_integration.drop_table.work_table_name drop all storage
-        ]';
-        statements(2).plsql.code := q'[
             drop table $data_integration.drop_table.work_table_name purge
         ]';
         core.set('data_integration.drop_table.work_table_name', work_table_name);
@@ -143,7 +124,7 @@ create or replace package body out.data_integration is
                     estimate_percent => dbms_stats.auto_sample_size,
                     method_opt => 'for all columns size auto',
                     degree => dbms_stats.auto_degree,
-                    granularity => 'all',
+                    granularity => 'auto',
                     cascade => dbms_stats.auto_cascade,
                     no_invalidate => dbms_stats.auto_invalidate
                 );
@@ -174,16 +155,12 @@ create or replace package body out.data_integration is
         logger.session_step('start');
         statements(1).ignore_error := -00942;
         statements(1).plsql.code := q'[
-            truncate table $data_integration.incremental_update.{interation_table_base_name}_01 drop all storage
-        ]';
-        statements(2).ignore_error := -00942;
-        statements(2).plsql.code := q'[
             drop table $data_integration.incremental_update.{interation_table_base_name}_01 purge
         ]';
-        statements(3).plsql.code := q'[
-            create global temporary table $data_integration.incremental_update.{interation_table_base_name}_01 on commit preserve rows parallel as
+        statements(2).plsql.code := q'[
+            create table $data_integration.incremental_update.{interation_table_base_name}_01 pctfree 0 nologging compress parallel as
             select
-                nvl((select max($data_integration.incremental_update.(options).surrogate_key) from $data_integration.incremental_update.target_table_name), 0) + rownum $data_integration.incremental_update.(options).surrogate_key,
+                nvl((select max($data_integration.incremental_update.(options).surrogate_key) from $data_integration.incremental_update.target_table_name $data_integration.incremental_update.{partition_clause}), 0) + rownum $data_integration.incremental_update.(options).surrogate_key,
                 $data_integration.incremental_update.{interation_01_columns}
             from $data_integration.incremental_update.work_table_name w
             left join $data_integration.incremental_update.target_table_name $data_integration.incremental_update.{partition_clause} t on
@@ -191,16 +168,12 @@ create or replace package body out.data_integration is
             where
                 t.$data_integration.incremental_update.(options).surrogate_key is null
         ]';
-        statements(4).ignore_error := -00942;
-        statements(4).plsql.code := q'[
-            truncate table $data_integration.incremental_update.{interation_table_base_name}_02 drop all storage
-        ]';
-        statements(5).ignore_error := -00942;
-        statements(5).plsql.code := q'[
+        statements(3).ignore_error := -00942;
+        statements(3).plsql.code := q'[
             drop table $data_integration.incremental_update.{interation_table_base_name}_02 purge
         ]';
-        statements(6).plsql.code := q'[
-            create global temporary table $data_integration.incremental_update.{interation_table_base_name}_02 on commit preserve rows parallel as
+        statements(4).plsql.code := q'[
+            create table $data_integration.incremental_update.{interation_table_base_name}_02 pctfree 0 nologging compress parallel as
             select
                 nvl(i01.$data_integration.incremental_update.(options).surrogate_key, t.$data_integration.incremental_update.(options).surrogate_key) $data_integration.incremental_update.(options).surrogate_key,
                 $data_integration.incremental_update.{interation_02_columns}
@@ -208,16 +181,12 @@ create or replace package body out.data_integration is
             full join $data_integration.incremental_update.target_table_name $data_integration.incremental_update.{partition_clause} t on
                 $data_integration.incremental_update.{interation_02_join}
         ]';
-        statements(7).ignore_error := -00942;
-        statements(7).plsql.code := q'[
-            truncate table $data_integration.incremental_update.{interation_table_base_name}_03 drop all storage
-        ]';
-        statements(8).ignore_error := -00942;
-        statements(8).plsql.code := q'[
+        statements(5).ignore_error := -00942;
+        statements(5).plsql.code := q'[
             drop table $data_integration.incremental_update.{interation_table_base_name}_03 purge
         ]';
-        statements(9).plsql.code := q'[
-            create global temporary table $data_integration.incremental_update.{interation_table_base_name}_03 on commit preserve rows parallel as
+        statements(6).plsql.code := q'[
+            create table $data_integration.incremental_update.{interation_table_base_name}_03 pctfree 0 nologging compress parallel as
             select
                 i02.$data_integration.incremental_update.(options).surrogate_key,
                 $data_integration.incremental_update.{interation_03_01_natural_key_columns},
@@ -229,8 +198,8 @@ create or replace package body out.data_integration is
             left join $data_integration.incremental_update.target_table_name $data_integration.incremental_update.{partition_clause} t on
                 $data_integration.incremental_update.{interation_03_01_join_02}
         ]';
-        statements(10).plsql.code := q'[
-            create global temporary table $data_integration.incremental_update.{interation_table_base_name}_03 on commit preserve rows parallel as
+        statements(7).plsql.code := q'[
+            create table $data_integration.incremental_update.{interation_table_base_name}_03 pctfree 0 nologging compress parallel as
             select
                 $data_integration.incremental_update.{interation_03_02_columns}
                 $data_integration.incremental_update.{interation_03_target_only_columns}
@@ -238,13 +207,13 @@ create or replace package body out.data_integration is
             full join $data_integration.incremental_update.target_table_name $data_integration.incremental_update.{partition_clause} t on
                 $data_integration.incremental_update.{interation_03_02_join}
         ]';
-        statements(11).plsql.code := q'[
+        statements(8).plsql.code := q'[
             truncate table $data_integration.incremental_update.target_table_name drop storage
         ]';
-        statements(12).plsql.code := q'[
+        statements(9).plsql.code := q'[
             alter table $data_integration.incremental_update.target_table_name truncate partition $data_integration.incremental_update.(options).partition_name drop storage
         ]';
-        statements(13).plsql.code := q'[
+        statements(10).plsql.code := q'[
             insert /*+ append parallel */ into $data_integration.incremental_update.target_table_name $data_integration.incremental_update.{partition_clause} nologging (
                 $data_integration.incremental_update.{target_table_columns}
             )
@@ -252,7 +221,7 @@ create or replace package body out.data_integration is
                 $data_integration.incremental_update.{target_table_columns}
             from $data_integration.incremental_update.{interation_table_base_name}_03
         ]';
-        statements(14).plsql.code := q'[
+        statements(11).plsql.code := q'[
             merge /*+ append parallel */ into $data_integration.incremental_update.target_table_name $data_integration.incremental_update.{partition_clause} t
                 using $data_integration.incremental_update.{interation_table_base_name}_03 i03 on (
                     $data_integration.incremental_update.{merge_condition}
@@ -265,7 +234,7 @@ create or replace package body out.data_integration is
                         $data_integration.incremental_update.{merge_insert_columns}
                     )
         ]';
-        statements(15).plsql.code := q'[
+        statements(12).plsql.code := q'[
             begin
                 dbms_stats.gather_table_stats(
                     ownname => '$data_integration.incremental_update.{target_table_owner_name}',
@@ -274,28 +243,19 @@ create or replace package body out.data_integration is
                     estimate_percent => dbms_stats.auto_sample_size,
                     method_opt => 'for all columns size auto',
                     degree => dbms_stats.auto_degree,
-                    granularity => 'all',
+                    granularity => 'auto',
                     cascade => dbms_stats.auto_cascade,
                     no_invalidate => dbms_stats.auto_invalidate
                 );
             end;
         ]';
-        statements(16).plsql.code := q'[
-            truncate table $data_integration.incremental_update.{interation_table_base_name}_01 drop all storage
-        ]';
-        statements(17).plsql.code := q'[
+        statements(13).plsql.code := q'[
             drop table $data_integration.incremental_update.{interation_table_base_name}_01 purge
         ]';
-        statements(18).plsql.code := q'[
-            truncate table $data_integration.incremental_update.{interation_table_base_name}_02 drop all storage
-        ]';
-        statements(19).plsql.code := q'[
+        statements(14).plsql.code := q'[
             drop table $data_integration.incremental_update.{interation_table_base_name}_02 purge
         ]';
-        statements(20).plsql.code := q'[
-            truncate table $data_integration.incremental_update.{interation_table_base_name}_03 drop all storage
-        ]';
-        statements(21).plsql.code := q'[
+        statements(15).plsql.code := q'[
             drop table $data_integration.incremental_update.{interation_table_base_name}_03 purge
         ]';
         core.set('data_integration.incremental_update.{analyze_partition_clause}', options);
@@ -312,9 +272,9 @@ create or replace package body out.data_integration is
         core.set('data_integration.incremental_update.{interation_03_target_only_columns}', options, target_table_name, work_table_name);
         core.set('data_integration.incremental_update.{interation_table_base_name}', target_table_name);
         core.set('data_integration.incremental_update.{merge_condition}', options, target_table_name);
-        core.set('data_integration.incremental_update.{merge_insert_columns}', work_table_name);
-        core.set('data_integration.incremental_update.{merge_target_table_columns}', work_table_name);
-        core.set('data_integration.incremental_update.{merge_update_clause}', options, work_table_name);
+        core.set('data_integration.incremental_update.{merge_insert_columns}', target_table_name);
+        core.set('data_integration.incremental_update.{merge_target_table_columns}', target_table_name);
+        core.set('data_integration.incremental_update.{merge_update_clause}', options, target_table_name);
         core.set('data_integration.incremental_update.{partition_clause}', options);
         core.set('data_integration.incremental_update.{target_table_owner_name}', target_table_name);
         core.set('data_integration.incremental_update.{target_table_short_name}', target_table_name);
@@ -329,18 +289,14 @@ create or replace package body out.data_integration is
         statements(2).execute := core.isset('data_integration.incremental_update.(options).surrogate_key');
         statements(3).execute := core.isset('data_integration.incremental_update.(options).surrogate_key');
         statements(4).execute := core.isset('data_integration.incremental_update.(options).surrogate_key');
-        statements(5).execute := core.isset('data_integration.incremental_update.(options).surrogate_key');
         statements(6).execute := core.isset('data_integration.incremental_update.(options).surrogate_key');
-        statements(9).execute := core.isset('data_integration.incremental_update.(options).surrogate_key');
-        statements(10).execute := not core.isset('data_integration.incremental_update.(options).surrogate_key');
-        statements(11).execute := not core.isset('data_integration.incremental_update.(options).partition_name') and core.get('data_integration.incremental_update.(options).method') = 'full join';
-        statements(12).execute := core.isset('data_integration.incremental_update.(options).partition_name') and core.get('data_integration.incremental_update.(options).method') = 'full join';
-        statements(13).execute := core.get('data_integration.incremental_update.(options).method') = 'full join';
-        statements(14).execute := core.get('data_integration.incremental_update.(options).method') = 'merge';
-        statements(16).execute := core.isset('data_integration.incremental_update.(options).surrogate_key');
-        statements(17).execute := core.isset('data_integration.incremental_update.(options).surrogate_key');
-        statements(18).execute := core.isset('data_integration.incremental_update.(options).surrogate_key');
-        statements(19).execute := core.isset('data_integration.incremental_update.(options).surrogate_key');
+        statements(7).execute := not core.isset('data_integration.incremental_update.(options).surrogate_key');
+        statements(8).execute := not core.isset('data_integration.incremental_update.(options).partition_name') and core.get('data_integration.incremental_update.(options).method') = 'full join';
+        statements(9).execute := core.isset('data_integration.incremental_update.(options).partition_name') and core.get('data_integration.incremental_update.(options).method') = 'full join';
+        statements(10).execute := core.get('data_integration.incremental_update.(options).method') = 'full join';
+        statements(11).execute := core.get('data_integration.incremental_update.(options).method') = 'merge';
+        statements(13).execute := core.isset('data_integration.incremental_update.(options).surrogate_key');
+        statements(14).execute := core.isset('data_integration.incremental_update.(options).surrogate_key');
         core.execute(statements);
         logger.session_step('done');
     exception

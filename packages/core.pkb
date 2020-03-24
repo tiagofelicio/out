@@ -306,7 +306,7 @@ create or replace package body out.core is
                         property_value := 'true';
                 end case;
             when 'data_integration.control_append.(options).truncate_table' then
-                option_value := get_option('truncate table', i_arg1, 'false');
+                option_value := get_option('truncate table', i_arg1, 'true');
                 case option_value
                     when 'false' then
                         property_value := 'false';
@@ -359,11 +359,11 @@ create or replace package body out.core is
             when 'data_integration.incremental_update.{merge_condition}' then
                 property_value := get_column_list(i_arg2, '', 't.column_name = i03.column_name', ' and\n\t\t\t\t\t', '', get_option('natural key', i_arg1));
             when 'data_integration.incremental_update.{merge_insert_columns}' then
-                property_value := get_column_list('out.' || i_arg1, '', 'i03.column_name', ',\n\t\t\t\t\t\t', '');
+                property_value := get_column_list(i_arg1, '', 'i03.column_name', ',\n\t\t\t\t\t\t', '');
             when 'data_integration.incremental_update.{merge_target_table_columns}' then
-                property_value := get_column_list('out.' || i_arg1, '', 't.column_name', ',\n\t\t\t\t\t\t', '');
+                property_value := get_column_list(i_arg1, '', 't.column_name', ',\n\t\t\t\t\t\t', '');
             when 'data_integration.incremental_update.{merge_update_clause}' then
-                property_value := get_column_list('out.' || i_arg2, 'when matched then\n\t\t\t\t\tupdate set\n\t\t\t\t\t\t', 't.column_name = i03.column_name', ',\n\t\t\t\t\t\t', '', null, get_option('natural key', i_arg1));
+                property_value := get_column_list(i_arg2, 'when matched then\n\t\t\t\t\tupdate set\n\t\t\t\t\t\t', 't.column_name = i03.column_name', ',\n\t\t\t\t\t\t', '', null, get_option('natural key', i_arg1));
             when 'data_integration.incremental_update.{partition_clause}' then
                 option_value := get_option('partition name', i_arg1);
                 property_value := case when option_value is not null then 'partition (' || option_value || ')' end;
@@ -432,7 +432,7 @@ create or replace package body out.core is
                         line_end := nvl(instr(substr(i_arg1 || chr(10), line_start), chr(10)), 0);
                         exit when line_end = 0;
                         line := trim(substr(i_arg1, line_start, line_end - 1));
-                        if lower(line) like '%date%' then
+                        if lower(line) like '% date %' then
                             line := trim(substr(line, 1, instr(lower(line), ' mask ') - 1));
                         end if;
                         if  length(line) > 0 then
@@ -454,7 +454,7 @@ create or replace package body out.core is
                         line_end := nvl(instr(substr(i_arg1 || chr(10), line_start), chr(10)), 0);
                         exit when line_end = 0;
                         line := trim(substr(i_arg1, line_start, line_end - 1));
-                        if lower(line) like '%date%' then
+                        if lower(line) like '% date %' then
                             line := trim(replace(line, ' date ', ' char date_format date '));
                         else
                             line := trim(substr(line, 1, instr(line, ' ') - 1));
@@ -598,9 +598,9 @@ create or replace package body out.core is
                 option_value := get_option('keep input files', i_arg1, 'false');
                 case option_value
                     when 'false' then
-                        property_value := '';
-                    when 'true' then
                         property_value := '-m';
+                    when 'true' then
+                        property_value := '';
                 end case;
             when 'files.zip.(options).password' then
                 option_value := get_option('password', i_arg1);

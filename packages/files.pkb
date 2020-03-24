@@ -108,28 +108,23 @@ create or replace package body out.files is
                         )
                         location ('$files.load.filename')
                     )
-                    nomonitoring
                     parallel
                     reject limit 0
                 ]';
                 statements(5).ignore_error := -00942;
                 statements(5).plsql.code := q'[
-                    truncate table $files.load.work_table_name drop all storage
-                ]';
-                statements(6).ignore_error := -00942;
-                statements(6).plsql.code := q'[
                     drop table $files.load.work_table_name purge
                 ]';
-                statements(7).plsql.code := q'[
-                    create global temporary table $files.load.work_table_name on commit preserve rows parallel as
+                statements(6).plsql.code := q'[
+                    create table $files.load.work_table_name pctfree 0 nologging compress parallel as
                     select
                         $files.load.{work_table_columns}
                     from $files.load.{external_table_name}
                 ]';
-                statements(8).plsql.code := q'[
+                statements(7).plsql.code := q'[
                     drop table $files.load.{external_table_name} purge
                 ]';
-                statements(9).plsql.code := q'[
+                statements(8).plsql.code := q'[
                     drop directory $files.load.{directory_name}
                 ]';
                 core.set('files.load.{directory_name}', work_table_name);
@@ -154,17 +149,15 @@ create or replace package body out.files is
                 ]';
                 statements(3).ignore_error := -00942;
                 statements(3).plsql.code := q'[
-                    truncate table $files.load.work_table_name drop all storage
-                ]';
-                statements(4).ignore_error := -00942;
-                statements(4).plsql.code := q'[
                     drop table $files.load.work_table_name purge
                 ]';
-                statements(5).plsql.code := q'[
-                    create global temporary table $files.load.work_table_name (
+                statements(4).plsql.code := q'[
+                    create table $files.load.work_table_name (
                         content clob
                     )
-                    on commit preserve rows
+                    pctfree 0
+                    nologging
+                    compress
                     parallel
                 ]';
                 statements(6).plsql.code := q'[
