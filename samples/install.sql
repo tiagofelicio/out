@@ -40,18 +40,13 @@ quota unlimited on &3;
 grant connect to data;
 grant resource to data;
 
-create table data.dh_world_cities (
-    name varchar2(250),
-    country varchar2(250),
-    subcountry varchar2(250),
-    geonameid number,
-    resource_name varchar2(250)
-);
-
 @&1/samples/tables.sql
+
 @&1/samples/processes/api.pks
-@&1/samples/processes/examples.pks
-@&1/samples/processes/examples.pkb
 @&1/samples/processes/hub.pks
 @&1/samples/processes/hub.pkb
+@&1/samples/processes/dw.pks
+@&1/samples/processes/dw.pkb
+@&1/samples/processes/load.pks
+@&1/samples/processes/load.pkb
 
