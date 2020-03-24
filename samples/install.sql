@@ -27,26 +27,29 @@ grant execute on out.files to metadata;
 grant execute on out.internet to metadata;
 grant execute on out.utilities to metadata;
 
-create user dw identified by &2
-default tablespace &4
-temporary tablespace &5
-quota unlimited on &4;
-
-create user hub identified by &2
+create user dhub identified by &2
 default tablespace &3
 temporary tablespace &5
 quota unlimited on &3;
 
-grant connect to data;
-grant resource to data;
+grant connect to dhub;
+grant resource to dhub;
+
+create user dwh identified by &2
+default tablespace &4
+temporary tablespace &5
+quota unlimited on &4;
+
+grant connect to dwh;
+grant resource to dwh;
 
 @&1/samples/tables.sql
 
 @&1/samples/processes/api.pks
-@&1/samples/processes/hub.pks
-@&1/samples/processes/hub.pkb
-@&1/samples/processes/dw.pks
-@&1/samples/processes/dw.pkb
+@&1/samples/processes/dhub.pks
+@&1/samples/processes/dhub.pkb
+@&1/samples/processes/dwh.pks
+@&1/samples/processes/dwh.pkb
 @&1/samples/processes/load.pks
 @&1/samples/processes/load.pkb
 
