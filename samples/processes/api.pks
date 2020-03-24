@@ -1,0 +1,62 @@
+create or replace package metadata.api authid current_user is
+    ------------------------------------------------------------------------------------------------------------------------
+    -- out.bind
+    --    | 
+    --    | 
+    -- out.process
+    --    | 
+    --    | 
+    -- out.data_integration.check_unique_key
+    --    | 
+    --    | 
+    -- out.data_integration.create_table
+    --    | 
+    --    | 
+    -- out.data_integration.drop_table
+    --    | 
+    --    | 
+    -- out.data_integration.control_append
+    --    | 
+    --    | 
+    -- out.data_integration.incremental_update
+    --    | 
+    --    | 
+    -- out.files.copy
+    --    | 
+    --    | 
+    -- out.files.move
+    --    | 
+    --    | 
+    -- out.files.remove
+    --    | 
+    --    | 
+    -- out.files.wait
+    --    | 
+    --    | 
+    -- out.files.load
+    --    | 
+    --    | 
+    -- out.files.unload
+    --    | 
+    --    | 
+    -- out.files.zip
+    --    | 
+    --    | 
+    -- out.files.unzip
+    --    | 
+    --    | 
+    -- out.files.unzip
+    --    | 
+    --    | 
+    -- out.internet.http_get
+    --    | 
+    --    | 
+    -- out.utilities.bash
+    --    | 
+    --    | 
+    -- out.utilities.plsql
+    --    | 
+    --    | 
+    ------------------------------------------------------------------------------------------------------------------------
+end api;
+/

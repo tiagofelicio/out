@@ -2,16 +2,18 @@
 -- File Name     : install.sql
 -- Author        : tiago felicio
 -- Description   :
--- Call Syntax   : @install.sql (base-folder) (password) (default-tablespace) (temporary-tablespace)
+-- Call Syntax   : @install.sql (base-folder) (password) (default-tablespace) (stage-tablespace) (temporary-tablespace)
 -- Last Modified : 2020/03/12
 -- ----------------------------------------------------------------------------------------------------------------------------
 
 set define off;
 
 create user out identified by &2
-default tablespace &3
-temporary tablespace &4
-quota unlimited on &3;
+default tablespace &4
+temporary tablespace &5;
+
+alter user out quota unlimited on &3;
+alter user out quota unlimited on &4;
 
 grant resource to out;
 grant create any directory to out;
@@ -63,7 +65,8 @@ nologging
 lob(error) store as securefile (
     nocache nologging compress high deduplicate
 )
-noparallel;
+noparallel
+tablespace &3;
 
 create table out.session_steps (
     session_no number,
@@ -84,7 +87,8 @@ nologging
 lob(error) store as securefile (
     nocache nologging compress high deduplicate
 )
-noparallel;
+noparallel
+tablespace &3;
 
 create table out.session_step_tasks (
     session_no number,
@@ -109,7 +113,8 @@ lob(code) store as securefile (
 lob(error) store as securefile (
     nocache nologging compress high deduplicate
 )
-noparallel;
+noparallel
+tablespace &3;
 
 @&1/out/java/OUTTools.pls
 

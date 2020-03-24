@@ -4,9 +4,32 @@ create or replace package body out.data_integration is
     ----------------------------------------------------------------------------------------------------------------------------
     ----------------------------------------------------------------------------------------------------------------------------
 
+    procedure check_not_null(work_table_name varchar2, column_name varchar2) is
+        statement types.statement;
+        null_values number;
+    begin
+        logger.session_step('start');
+        statement.plsql.code := q'[
+            select count(1)
+            from $data_integration.check_not_null.work_table_name
+            where $data_integration.check_not_null.column_name is null
+        ]';
+        statement.plsql.to_fetch := true;
+        core.set('data_integration.check_not_null.column_name', column_name);
+        core.set('data_integration.check_not_null.work_table_name', work_table_name);
+        null_values := core.execute(statement).AccessNumber;
+        if null_values <> 0 then
+            raise_application_error(-20000, 'Found ' || to_char(null_values) || ' null values.');
+        end if;
+        logger.session_step('done');
+    exception
+        when others then
+            logger.session_step('error', sqlerrm);
+    end check_not_null;
+
     procedure check_unique_key(work_table_name varchar2, columns_name varchar2) is
         statement types.statement;
-        duplicated_keys number;
+        duplicated_values number;
     begin
         logger.session_step('start');
         statement.plsql.code := q'[
@@ -21,15 +44,34 @@ create or replace package body out.data_integration is
         statement.plsql.to_fetch := true;
         core.set('data_integration.check_unique_key.columns_name', columns_name);
         core.set('data_integration.check_unique_key.work_table_name', work_table_name);
-        duplicated_keys := core.execute(statement).AccessNumber;
-        if duplicated_keys <> 0 then
-            raise_application_error(-20000, 'Found ' || to_char(duplicated_keys) || ' duplicated keys.');
+        duplicated_values := core.execute(statement).AccessNumber;
+        if duplicated_values <> 0 then
+            raise_application_error(-20000, 'Found ' || to_char(duplicated_values) || ' duplicated values.');
         end if;
         logger.session_step('done');
     exception
         when others then
             logger.session_step('error', sqlerrm);
     end check_unique_key;
+
+    procedure check_primary_key(work_table_name varchar2, columns_name varchar2) is
+        statements types.statements;
+    begin
+        logger.session_step('start');
+        statements(1).plsql.code := q'[
+            alter table $data_integration.check_primary_key.work_table_name add constraint $data_integration.check_primary_key.work_table_name_pk primary key ($data_integration.check_primary_key.columns_name)
+        ]';
+        statements(2).plsql.code := q'[
+            alter table $data_integration.check_primary_key.work_table_name drop constraint $data_integration.check_primary_key.work_table_name_pk
+        ]';
+        core.set('data_integration.check_primary_key.columns_name', columns_name);
+        core.set('data_integration.check_primary_key.work_table_name', work_table_name);
+        core.execute(statements);
+        logger.session_step('done');
+    exception
+        when others then
+            logger.session_step('error', sqlerrm);
+    end check_primary_key;
 
     procedure create_table(work_table_name varchar2, statement varchar2) is
         statements types.statements;

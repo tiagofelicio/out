@@ -8,97 +8,6 @@ create or replace package body metadata.examples is
     -- landing zone
     landing_zone constant text := '/home/oracle';
 
-    procedure data_integration_test is
-    begin
-        out.process('start');
-        out.process('done');
-    exception
-        when others then
-            out.process('error');
-    end data_integration_test;
-
-    procedure files_test is
-        aa text;
-    begin
-        out.process('start');
-        aa := out.utilities.bash('ech aaa', q'[
-            ignore errors => true
-        ]');
-        out.bind('landing_zone', macro => out.utilities.bash('echo ' || landing_zone));
-        out.utilities.bash('rm -rf #landing_zone/*');
-        out.utilities.bash('touch #landing_zone/file_1.txt');
-        out.files.copy('#landing_zone/file_1_1.txt', '#landing_zone/file_1.txt');
-        out.utilities.bash('mkdir -p #landing_zone/folder1');
-        out.files.copy('#landing_zone/folder1_1', '#landing_zone/folder1', q'[
-            recursive => true
-        ]');
-        out.utilities.bash('mkdir -p #landing_zone/folder2/folder2/folder2');
-        out.files.copy('#landing_zone/folder2_1', '#landing_zone/folder2', q'[
-            recursive => true
-        ]');
-        out.files.move('#landing_zone/folder', '#landing_zone/folder1');
-        out.files.move('#landing_zone/folder/folder2_1', '#landing_zone/folder2_1');
-        out.files.move('#landing_zone/folder/folder2', '#landing_zone/folder2');
-        out.files.move('#landing_zone/file.txt', '#landing_zone/file_1_1.txt');
-        out.files.remove('#landing_zone/file_1.txt', q'[
-            force => true
-        ]');
-        out.files.remove('#landing_zone/folder1_1', q'[
-            recursive => true
-        ]');
-        out.utilities.bash('(sleep 10; touch #landing_zone/trigger) &');
-        out.files.wait('#landing_zone/trigger');
-        out.files.wait('#landing_zone/trigger', q'[
-            polling interval => 10
-        ]');
-        out.files.zip('#landing_zone/file.zip', '#landing_zone/file.txt');
-        out.files.zip('#landing_zone/folder.zip', '#landing_zone/folder', q'[
-            recursive => true
-        ]');
-        out.files.zip('#landing_zone/test.zip', '#landing_zone/*', q'[
-            compress level => 9
-            password => test
-        ]');
-        out.files.unzip('/', '#landing_zone/test.zip', q'[
-            password => test
-        ]');
-        out.files.unzip('/', '#landing_zone/file.zip');
-        out.files.unzip('/', '#landing_zone/folder.zip', q'[
-            keep input files => true
-        ]');
-        out.files.unload('/home/oracle/all_users.csv', 'all_users', q'[
-            date format => yyyymmddhh24miss
-        ]');
-        out.process('done');
-    exception
-        when others then
-            out.process('error');
-    end files_test;
-
-    procedure utilities_test is
-    begin
-        out.process('start');
-        out.bind('landing_zone', macro => landing_zone);
-        out.utilities.bash('rm -rf #landing_zone/*');
-        out.utilities.bash('touch #landing_zone/file_1.txt');
-        out.utilities.bash('echo "line 1" > #landing_zone/file_2.txt');
-        out.utilities.bash('echo "line 2" >> #landing_zone/file_2.txt');
-        out.utilities.bash('echo "line 3" >> #landing_zone/file_2.txt');
-        out.utilities.bash('echo "line 4" >> #landing_zone/file_2.txt');
-        out.utilities.bash('mkdir -p #landing_zone/folder1/folder2/folder3');
-        dbms_output.put_line('ls #landing_zone ->' || out.utilities.bash('ls #landing_zone'));
-        dbms_output.put_line('cat #landing_zone/file_1.txt ->' || out.utilities.bash('cat #landing_zone/file_1.txt'));
-        dbms_output.put_line('cat #landing_zone/file_2.txt ->' || out.utilities.bash('cat #landing_zone/file_2.txt'));
-        dbms_output.put_line('ls #landing_zone/folder1/folder2 ->' || out.utilities.bash('ls #landing_zone/folder1/folder2/folder3'));
-        dbms_output.put_line('cat #landing_zone/aaa.txt (ignore errors) ->' || out.utilities.bash('cat #landing_zone/aaa.txt', q'[
-            ignore errors => true
-        ]'));
-        out.process('done');
-    exception
-        when others then
-            out.process('error');
-    end utilities_test;
-
     procedure dh_world_cities is
     begin
         out.process('start');
@@ -128,42 +37,11 @@ create or replace package body metadata.examples is
                 '#dh_library/#dh_resource' resource_name
             from dh_world_cities_01
         ]');
+        out.data_integration.check_primary_key('dh_world_cities', 'geonameid, subcountry');
+        out.data_integration.check_not_null('dh_world_cities', 'subcountry');
         out.data_integration.check_unique_key('dh_world_cities', 'geonameid');
-        out.data_integration.control_append('data.dh_world_cities', 'dh_world_cities', q'[
-            truncate table => true
-        ]');
-        out.data_integration.control_append('data.dh_world_cities_4', 'dh_world_cities', q'[
-            partition name => p_all
-            truncate partition => true
-        ]');
-        out.data_integration.incremental_update('data.dh_world_cities_2', 'dh_world_cities', q'[
+        out.data_integration.incremental_update('data.dh_world_cities', 'dh_world_cities', q'[
             natural key => geonameid
-            surrogate key => sk
-        ]');
-        out.data_integration.incremental_update('data.dh_world_cities_3', 'dh_world_cities', q'[
-            natural key => geonameid, name
-        ]');
-        out.data_integration.incremental_update('data.dh_world_cities_4', 'dh_world_cities', q'[
-            natural key => geonameid
-            surrogate key => sk
-            partition name => p_all
-        ]');
-        out.data_integration.incremental_update('data.dh_world_cities_5', 'dh_world_cities', q'[
-            method => merge
-            natural key => geonameid
-        ]');
-        out.data_integration.incremental_update('data.dh_world_cities_4', 'dh_world_cities', q'[
-            natural key => geonameid
-            surrogate key => sk
-            partition name => p_all
-            method => merge
-        ]');
-        out.files.unload('#landing_zone/#dh_resource.psv', 'dh_world_cities', q'[
-            field separator => |
-            file format => delimited
-            generate header => false
-            record separator => \n
-            text delimiter => "
         ]');
         out.files.remove('#landing_zone/#dh_resource.csv');
         out.data_integration.drop_table('dh_world_cities_01');

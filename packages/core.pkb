@@ -122,6 +122,7 @@ create or replace package body out.core is
     end bash;
 
     function plsql(statement in out nocopy types.plsql_lang, work in out number) return anydata is
+        pragma autonomous_transaction;
         statement_cursor pls_integer;
         statement_column_count pls_integer;
         statement_column_description dbms_sql.desc_tab2;
@@ -151,7 +152,6 @@ create or replace package body out.core is
             when false then
                 execute immediate statement.code;
                 work := sql%rowcount;
-                commit;
             when true then
                 statement_cursor := dbms_sql.open_cursor;
                 dbms_sql.parse(statement_cursor, statement.code, dbms_sql.native);
@@ -221,6 +221,7 @@ create or replace package body out.core is
                 end case;
                 work := 0;
         end case;
+        commit;
         return result;
     exception
         when others then
@@ -262,6 +263,18 @@ create or replace package body out.core is
         i_arg3 types.text := case when arg3 is not null then parse_variables(arg3) end;
     begin
         case property_name
+        ------------------------------------------------------------------------------------------------------------------------ < data_integration.check_not_null
+            when 'data_integration.check_not_null.column_name' then
+                property_value := i_arg1;
+            when 'data_integration.check_not_null.work_table_name' then
+                check_work_table(i_arg1);
+                property_value := i_arg1;
+        ------------------------------------------------------------------------------------------------------------------------ < data_integration.check_primary_key
+            when 'data_integration.check_primary_key.columns_name' then
+                property_value := i_arg1;
+            when 'data_integration.check_primary_key.work_table_name' then
+                check_work_table(i_arg1);
+                property_value := i_arg1;
         ------------------------------------------------------------------------------------------------------------------------ < data_integration.check_unique_key
             when 'data_integration.check_unique_key.columns_name' then
                 property_value := i_arg1;
@@ -632,6 +645,9 @@ create or replace package body out.core is
     function isset(property_name varchar2) return boolean is
     begin
         return properties('$' || property_name) is not null;
+    exception
+        when no_data_found then
+            return false;
     end isset;
 
     function execute(statement in out nocopy types.statement, unset boolean default true) return anydata is

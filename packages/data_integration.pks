@@ -1,6 +1,10 @@
 create or replace package out.data_integration authid current_user is
 
+    procedure check_not_null(work_table_name varchar2, column_name varchar2);
+
     procedure check_unique_key(work_table_name varchar2, columns_name varchar2);
+
+    procedure check_primary_key(work_table_name varchar2, columns_name varchar2);
 
     procedure create_table(work_table_name varchar2, statement varchar2);
 
