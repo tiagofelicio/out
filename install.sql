@@ -6,8 +6,6 @@
 -- Last Modified : 2020/03/12
 -- ----------------------------------------------------------------------------------------------------------------------------
 
-set define off;
-
 create user out identified by &2
 default tablespace &4
 temporary tablespace &5;

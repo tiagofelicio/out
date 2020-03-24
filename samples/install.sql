@@ -6,8 +6,6 @@
 -- Last Modified : 2020/03/13
 -- ----------------------------------------------------------------------------------------------------------------------------
 
-set define off;
-
 create user metadata identified by &2
 default tablespace &3
 temporary tablespace &5

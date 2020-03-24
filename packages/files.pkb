@@ -337,12 +337,16 @@ create or replace package body out.files is
     begin
         logger.session_step('start');
         statements(1).bash.code := q'[
-            unzip -o $files.unzip.(options).password $files.unzip.archive_name -d $files.unzip.directory_name && if [ "false" == "$files.unzip.(options).keep_input_files" ]; then rm $files.unzip.archive_name; fi
+            unzip -o $files.unzip.(options).password $files.unzip.archive_name -d $files.unzip.directory_name
+        ]';
+        statements(2).bash.code := q'[
+            rm $files.unzip.archive_name
         ]';
         core.set('files.unzip.(options).keep_input_files', options);
         core.set('files.unzip.(options).password', options);
         core.set('files.unzip.archive_name', archive_name);
         core.set('files.unzip.directory_name', directory_name);
+        statements(2).execute := not types.to_boolean(core.get('files.unzip.(options).keep_input_files'));
         core.execute(statements);
         logger.session_step('done');
     exception
