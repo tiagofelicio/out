@@ -6,9 +6,9 @@
 -- Last Modified : 2020/03/24
 -- ----------------------------------------------------------------------------------------------------------------------------
 
--- hub
+-- data hub
 
-create table hub.dh_world_cities (
+create table dhub.dh_world_cities (
     name varchar2(250),
     country varchar2(250),
     subcountry varchar2(250),
@@ -16,7 +16,7 @@ create table hub.dh_world_cities (
     resource_name varchar2(250)
 );
 
-create table hub.dh_covid_19 (
+create table dhub.dh_covid_19 (
     reference_date date,
     country varchar2(250),
     confirmed number,
@@ -25,14 +25,14 @@ create table hub.dh_covid_19 (
     resource_name varchar2(250)
 );
 
-create table hub.dh_us_euro_foreign_exchange_rate (
+create table dhub.dh_us_euro_foreign_exchange_rate (
     reference_date date,
     country varchar2(250),
     exchange_rate number,
     resource_name varchar2(250)
 );
 
-create table hub.dh_currency_codes (
+create table dhub.dh_currency_codes (
     entity varchar2(250),
     currency varchar2(250),
     alphabeticcode varchar2(3),
@@ -42,4 +42,5 @@ create table hub.dh_currency_codes (
     resource_name varchar2(250)
 );
 
--- dw
+-- data warehouse
+
