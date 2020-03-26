@@ -6,7 +6,7 @@ create or replace package out.core authid definer is
 
     function get(property_name varchar2) return varchar2;
 
-    procedure set(property_name varchar2, arg1 varchar2 default null, arg2 varchar2 default null, arg3 varchar2 default null);
+    procedure set(property_name varchar2, arg1 varchar2 default null);
 
     function isset(property_name varchar2) return boolean;
 

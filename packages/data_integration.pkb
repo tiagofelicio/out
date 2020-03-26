@@ -14,8 +14,8 @@ create or replace package body out.data_integration is
         statements(2).plsql.code := q'[
             alter table $data_integration.check_not_null.work_table_name drop constraint $data_integration.check_not_null.work_table_name_ck
         ]';
-        core.set('data_integration.check_not_null.column_name', column_name);
         core.set('data_integration.check_not_null.work_table_name', work_table_name);
+        core.set('data_integration.check_not_null.column_name', column_name);
         core.execute(statements);
         logger.session_step('done');
     exception
@@ -33,8 +33,8 @@ create or replace package body out.data_integration is
         statements(2).plsql.code := q'[
             alter table $data_integration.check_unique_key.work_table_name drop constraint $data_integration.check_unique_key.work_table_name_uk
         ]';
-        core.set('data_integration.check_unique_key.columns_name', columns_name);
         core.set('data_integration.check_unique_key.work_table_name', work_table_name);
+        core.set('data_integration.check_unique_key.columns_name', columns_name);
         core.execute(statements);
         logger.session_step('done');
     exception
@@ -52,8 +52,8 @@ create or replace package body out.data_integration is
         statements(2).plsql.code := q'[
             alter table $data_integration.check_primary_key.work_table_name drop constraint $data_integration.check_primary_key.work_table_name_pk
         ]';
-        core.set('data_integration.check_primary_key.columns_name', columns_name);
         core.set('data_integration.check_primary_key.work_table_name', work_table_name);
+        core.set('data_integration.check_primary_key.columns_name', columns_name);
         core.execute(statements);
         logger.session_step('done');
     exception
@@ -73,8 +73,8 @@ create or replace package body out.data_integration is
             create table $data_integration.create_table.work_table_name pctfree 0 nologging compress parallel as
             $data_integration.create_table.statement
         ]';
-        core.set('data_integration.create_table.statement', statement);
         core.set('data_integration.create_table.work_table_name', work_table_name);
+        core.set('data_integration.create_table.statement', statement);
         core.execute(statements);
         logger.session_step('done');
     exception
@@ -104,10 +104,14 @@ create or replace package body out.data_integration is
         statements(1).plsql.code := q'[
             truncate table $data_integration.control_append.target_table_name drop storage
         ]';
+        statements(2).ignore_error := -14312;
         statements(2).plsql.code := q'[
-            alter table $data_integration.control_append.target_table_name truncate partition $data_integration.control_append.(options).partition_name drop storage
+            alter table $data_integration.control_append.target_table_name add partition $data_integration.control_append.<partition_name> values ($data_integration.control_append.(options).partition_value)
         ]';
         statements(3).plsql.code := q'[
+            alter table $data_integration.control_append.target_table_name truncate partition $data_integration.control_append.<partition_name> drop storage
+        ]';
+        statements(4).plsql.code := q'[
             insert /*+ append parallel */ into $data_integration.control_append.target_table_name $data_integration.control_append.{partition_clause} nologging (
                 $data_integration.control_append.{work_table_columns}
             )
@@ -115,7 +119,7 @@ create or replace package body out.data_integration is
                 $data_integration.control_append.{work_table_columns}
             from $data_integration.control_append.work_table_name
         ]';
-        statements(4).plsql.code := q'[
+        statements(5).plsql.code := q'[
             begin
                 dbms_stats.gather_table_stats(
                     ownname => '$data_integration.control_append.{target_table_owner_name}',
@@ -130,18 +134,21 @@ create or replace package body out.data_integration is
                 );
             end;
         ]';
-        core.set('data_integration.control_append.{analyze_partition_clause}', options);
-        core.set('data_integration.control_append.{partition_clause}', options);
-        core.set('data_integration.control_append.{target_table_owner_name}', target_table_name);
-        core.set('data_integration.control_append.{target_table_short_name}', target_table_name);
-        core.set('data_integration.control_append.{work_table_columns}', work_table_name);
-        core.set('data_integration.control_append.(options).partition_name', options);
-        core.set('data_integration.control_append.(options).truncate_partition', options);
-        core.set('data_integration.control_append.(options).truncate_table', options);
         core.set('data_integration.control_append.target_table_name', target_table_name);
         core.set('data_integration.control_append.work_table_name', work_table_name);
+        core.set('data_integration.control_append.(options).partition_name', options);
+        core.set('data_integration.control_append.(options).partition_value', options);
+        core.set('data_integration.control_append.(options).truncate_partition', options);
+        core.set('data_integration.control_append.(options).truncate_table', options);
+        core.set('data_integration.control_append.<partition_name>');
+        core.set('data_integration.control_append.{analyze_partition_clause}');
+        core.set('data_integration.control_append.{partition_clause}');
+        core.set('data_integration.control_append.{target_table_owner_name}');
+        core.set('data_integration.control_append.{target_table_short_name}');
+        core.set('data_integration.control_append.{work_table_columns}');
         statements(1).execute := types.to_boolean(core.get('data_integration.control_append.(options).truncate_table'));
-        statements(2).execute := types.to_boolean(core.get('data_integration.control_append.(options).truncate_partition'));
+        statements(2).execute := core.isset('data_integration.control_append.(options).partition_value');
+        statements(3).execute := types.to_boolean(core.get('data_integration.control_append.(options).truncate_partition'));
         core.execute(statements);
         logger.session_step('done');
     exception
@@ -258,33 +265,33 @@ create or replace package body out.data_integration is
         statements(15).plsql.code := q'[
             drop table $data_integration.incremental_update.{interation_table_base_name}_03 purge
         ]';
-        core.set('data_integration.incremental_update.{analyze_partition_clause}', options);
-        core.set('data_integration.incremental_update.{interation_01_columns}', options, target_table_name);
-        core.set('data_integration.incremental_update.{interation_01_join}', options, target_table_name);
-        core.set('data_integration.incremental_update.{interation_02_columns}', options, target_table_name);
-        core.set('data_integration.incremental_update.{interation_02_join}', options, target_table_name);
-        core.set('data_integration.incremental_update.{interation_03_01_columns}', options, work_table_name);
-        core.set('data_integration.incremental_update.{interation_03_01_join_01}', options, target_table_name);
-        core.set('data_integration.incremental_update.{interation_03_01_join_02}', options, target_table_name);
-        core.set('data_integration.incremental_update.{interation_03_01_natural_key_columns}', options, target_table_name);
-        core.set('data_integration.incremental_update.{interation_03_02_columns}', work_table_name);
-        core.set('data_integration.incremental_update.{interation_03_02_join}', options, target_table_name);
-        core.set('data_integration.incremental_update.{interation_03_target_only_columns}', options, target_table_name, work_table_name);
-        core.set('data_integration.incremental_update.{interation_table_base_name}', target_table_name);
-        core.set('data_integration.incremental_update.{merge_condition}', options, target_table_name);
-        core.set('data_integration.incremental_update.{merge_insert_columns}', target_table_name);
-        core.set('data_integration.incremental_update.{merge_target_table_columns}', target_table_name);
-        core.set('data_integration.incremental_update.{merge_update_clause}', options, target_table_name);
-        core.set('data_integration.incremental_update.{partition_clause}', options);
-        core.set('data_integration.incremental_update.{target_table_owner_name}', target_table_name);
-        core.set('data_integration.incremental_update.{target_table_short_name}', target_table_name);
-        core.set('data_integration.incremental_update.{target_table_columns}', target_table_name);
+        core.set('data_integration.incremental_update.target_table_name', target_table_name);
+        core.set('data_integration.incremental_update.work_table_name', work_table_name);
         core.set('data_integration.incremental_update.(options).method', options);
         core.set('data_integration.incremental_update.(options).natural_key', options);
         core.set('data_integration.incremental_update.(options).partition_name', options);
         core.set('data_integration.incremental_update.(options).surrogate_key', options);
-        core.set('data_integration.incremental_update.target_table_name', target_table_name);
-        core.set('data_integration.incremental_update.work_table_name', work_table_name);
+        core.set('data_integration.incremental_update.{analyze_partition_clause}');
+        core.set('data_integration.incremental_update.{interation_01_columns}');
+        core.set('data_integration.incremental_update.{interation_01_join}');
+        core.set('data_integration.incremental_update.{interation_02_columns}');
+        core.set('data_integration.incremental_update.{interation_02_join}');
+        core.set('data_integration.incremental_update.{interation_03_01_columns}');
+        core.set('data_integration.incremental_update.{interation_03_01_join_01}');
+        core.set('data_integration.incremental_update.{interation_03_01_join_02}');
+        core.set('data_integration.incremental_update.{interation_03_01_natural_key_columns}');
+        core.set('data_integration.incremental_update.{interation_03_02_columns}');
+        core.set('data_integration.incremental_update.{interation_03_02_join}');
+        core.set('data_integration.incremental_update.{interation_03_target_only_columns}');
+        core.set('data_integration.incremental_update.{interation_table_base_name}');
+        core.set('data_integration.incremental_update.{merge_condition}');
+        core.set('data_integration.incremental_update.{merge_insert_columns}');
+        core.set('data_integration.incremental_update.{merge_target_table_columns}');
+        core.set('data_integration.incremental_update.{merge_update_clause}');
+        core.set('data_integration.incremental_update.{partition_clause}');
+        core.set('data_integration.incremental_update.{target_table_columns}');
+        core.set('data_integration.incremental_update.{target_table_owner_name}');
+        core.set('data_integration.incremental_update.{target_table_short_name}');
         statements(1).execute := core.isset('data_integration.incremental_update.(options).surrogate_key');
         statements(2).execute := core.isset('data_integration.incremental_update.(options).surrogate_key');
         statements(3).execute := core.isset('data_integration.incremental_update.(options).surrogate_key');

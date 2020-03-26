@@ -11,9 +11,9 @@ create or replace package body out.files is
         statements(1).bash.code := q'[
             cp $files.copy.(options).recursive $files.copy.source_filename $files.copy.target_filename
         ]';
-        core.set('files.copy.(options).recursive', options);
-        core.set('files.copy.source_filename', source_filename);
         core.set('files.copy.target_filename', target_filename);
+        core.set('files.copy.source_filename', source_filename);
+        core.set('files.copy.(options).recursive', options);
         core.execute(statements);
         logger.session_step('done');
     exception
@@ -28,8 +28,8 @@ create or replace package body out.files is
         statements(1).bash.code := q'[
             mv $files.move.source_filename $files.move.target_filename
         ]';
-        core.set('files.move.source_filename', source_filename);
         core.set('files.move.target_filename', target_filename);
+        core.set('files.move.source_filename', source_filename);
         core.execute(statements);
         logger.session_step('done');
     exception
@@ -44,9 +44,9 @@ create or replace package body out.files is
         statements(1).bash.code := q'[
             rm $files.remove.(options).force $files.remove.(options).recursive $files.remove.filename
         ]';
+        core.set('files.remove.filename', filename);
         core.set('files.remove.(options).force', options);
         core.set('files.remove.(options).recursive', options);
-        core.set('files.remove.filename', filename);
         core.execute(statements);
         logger.session_step('done');
     exception
@@ -61,8 +61,8 @@ create or replace package body out.files is
         statements(1).bash.code := q'[
             while [ ! -f $files.wait.filename ]; do sleep $files.wait.(options).polling_interval; done
         ]';
-        core.set('files.wait.(options).polling_interval', options);
         core.set('files.wait.filename', filename);
+        core.set('files.wait.(options).polling_interval', options);
         core.execute(statements);
         logger.session_step('done');
     exception
@@ -106,7 +106,7 @@ create or replace package body out.files is
                                 $files.load.{external_table_field_list_clause}
                             )
                         )
-                        location ('$files.load.filename')
+                        location ('$files.load.{file_basename}')
                     )
                     parallel
                     reject limit 0
@@ -127,18 +127,20 @@ create or replace package body out.files is
                 statements(8).plsql.code := q'[
                     drop directory $files.load.{directory_name}
                 ]';
-                core.set('files.load.{directory_name}', work_table_name);
-                core.set('files.load.{directory_path}', filename);
-                core.set('files.load.{external_table_name}', work_table_name);
-                core.set('files.load.{external_table_columns}', attributes);
-                core.set('files.load.{external_table_field_list_clause}', attributes);
-                core.set('files.load.{work_table_columns}', attributes);
+                core.set('files.load.work_table_name', work_table_name);
+                core.set('files.load.filename', filename);
+                core.set('files.load.attributes', attributes);
                 core.set('files.load.(options).field_separator', options);
                 core.set('files.load.(options).heading', options);
                 core.set('files.load.(options).record_separator', options);
                 core.set('files.load.(options).text_delimiter', options);
-                core.set('files.load.filename', filename);
-                core.set('files.load.work_table_name', work_table_name);
+                core.set('files.load.{directory_name}');
+                core.set('files.load.{directory_path}');
+                core.set('files.load.{external_table_name}');
+                core.set('files.load.{external_table_columns}');
+                core.set('files.load.{external_table_field_list_clause}');
+                core.set('files.load.{file_basename}');
+                core.set('files.load.{work_table_columns}');
             when 'large object' then
                 statements(1).ignore_error := -04043;
                 statements(1).plsql.code := q'[
@@ -170,7 +172,7 @@ create or replace package body out.files is
                         l_warning integer := 0;
                     begin
                         insert into $files.load.work_table_name (content) values (empty_clob()) return content into l_clob;
-                        l_bfile := bfilename(upper('$files.load.{directory_name}'), '$files.load.filename');
+                        l_bfile := bfilename(upper('$files.load.{directory_name}'), '$files.load.{file_basename}');
                         dbms_lob.fileopen(l_bfile, dbms_lob.file_readonly);
                         dbms_lob.trim(l_clob, 0);
                         dbms_lob.loadclobfromfile(
@@ -193,10 +195,11 @@ create or replace package body out.files is
                 statements(7).plsql.code := q'[
                     drop directory $files.load.{directory_name}
                 ]';
-                core.set('files.load.{directory_name}', work_table_name);
-                core.set('files.load.{directory_path}', filename);
-                core.set('files.load.filename', filename);
                 core.set('files.load.work_table_name', work_table_name);
+                core.set('files.load.filename', filename);
+                core.set('files.load.{directory_name}');
+                core.set('files.load.{directory_path}');
+                core.set('files.load.{file_basename}');
         end case;
         core.execute(statements);
         logger.session_step('done');
@@ -236,7 +239,7 @@ create or replace package body out.files is
                             dbms_sql.define_column(table_cursor, i, buffer, 32767);
                         end loop;
                         row_count := dbms_sql.execute(table_cursor);
-                        file := utl_file.fopen(upper('$files.unload.{directory_name}'), '$files.unload.filename', 'w', 32767);
+                        file := utl_file.fopen(upper('$files.unload.{directory_name}'), '$files.unload.{file_basename}', 'w', 32767);
                         if $files.unload.(options).generate_header then
                             for i in 1 .. column_count loop
                                 if i > 1 then
@@ -287,16 +290,17 @@ create or replace package body out.files is
                 statements(4).plsql.code := q'[
                     drop directory $files.unload.{directory_name}
                 ]';
-                core.set('files.unload.{directory_name}', filename);
-                core.set('files.unload.{directory_path}', filename);
-                core.set('files.unload.{nls_date_format}');
+                core.set('files.unload.filename', filename);
+                core.set('files.unload.work_table_name', work_table_name);
                 core.set('files.unload.(options).date_format', options);
                 core.set('files.unload.(options).field_separator', options);
                 core.set('files.unload.(options).generate_header', options);
                 core.set('files.unload.(options).record_separator', options);
                 core.set('files.unload.(options).text_delimiter', options);
-                core.set('files.unload.filename', filename);
-                core.set('files.unload.work_table_name', work_table_name);
+                core.set('files.unload.{directory_name}');
+                core.set('files.unload.{directory_path}');
+                core.set('files.unload.{file_basename}');
+                core.set('files.unload.{nls_date_format}');
         end case;
         core.execute(statements);
         logger.session_step('done');
@@ -312,12 +316,12 @@ create or replace package body out.files is
         statements(1).bash.code := q'[
             zip $files.zip.(options).keep_input_files $files.zip.(options).compress_level $files.zip.(options).password $files.zip.(options).recursive $files.zip.archive_name $files.zip.filename
         ]';
+        core.set('files.zip.archive_name', archive_name);
+        core.set('files.zip.filename', filename);
         core.set('files.zip.(options).compress_level', options);
         core.set('files.zip.(options).keep_input_files', options);
         core.set('files.zip.(options).password', options);
         core.set('files.zip.(options).recursive', options);
-        core.set('files.zip.archive_name', archive_name);
-        core.set('files.zip.filename', filename);
         core.execute(statements);
         logger.session_step('done');
     exception
@@ -335,10 +339,10 @@ create or replace package body out.files is
         statements(2).bash.code := q'[
             rm $files.unzip.archive_name
         ]';
+        core.set('files.unzip.directory_name', directory_name);
+        core.set('files.unzip.archive_name', archive_name);
         core.set('files.unzip.(options).keep_input_files', options);
         core.set('files.unzip.(options).password', options);
-        core.set('files.unzip.archive_name', archive_name);
-        core.set('files.unzip.directory_name', directory_name);
         statements(2).execute := not types.to_boolean(core.get('files.unzip.(options).keep_input_files'));
         core.execute(statements);
         logger.session_step('done');

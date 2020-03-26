@@ -3,7 +3,7 @@
 -- Author        : tiago felicio
 -- Description   :
 -- Call Syntax   : @install.sql (base-folder) (password) (metadata-tablespace) (data-tablespace) (temporary-tablespace)
--- Last Modified : 2020/03/24
+-- Last Modified : 2020/03/25
 -- ----------------------------------------------------------------------------------------------------------------------------
 
 create user metadata identified by &2
@@ -12,6 +12,7 @@ temporary tablespace &5
 quota unlimited on &3;
 
 grant connect to metadata;
+grant resource to metadata;
 grant create procedure to metadata;
 grant select any table to metadata;
 

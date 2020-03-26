@@ -37,6 +37,7 @@ create or replace package body out.core is
         variable_value types.text;
     begin
         parsed_text := text;
+        variable_name := variables.first;
         while variable_name is not null loop
             variable_value := variables(variable_name);
             parsed_text := replace(parsed_text, variable_name, variable_value);
@@ -56,7 +57,7 @@ create or replace package body out.core is
         end if;
     end check_work_table;
 
-    function get_column_list(table_name varchar2, start_text varchar2, pattern varchar2, separator varchar2, end_text varchar2, column_list_in varchar2 default null, column_list_not_in varchar2 default null) return varchar2 is
+    function get_column_list(table_name varchar2, start_text varchar2 default '', pattern varchar2, separator varchar2, end_text varchar2 default '', column_list_in varchar2 default null, column_list_not_in varchar2 default null) return varchar2 is
         column_list types.text := '';
         column_name all_tab_columns.column_name%type;
         columns_cursor sys_refcursor;
@@ -255,47 +256,41 @@ create or replace package body out.core is
         return properties('$' || property_name);
     end get;
 
-    procedure set(property_name varchar2, arg1 varchar2 default null, arg2 varchar2 default null, arg3 varchar2 default null) is
+    procedure set(property_name varchar2, arg1 varchar2 default null) is
         option_value types.text;
         property_value types.text;
         i_arg1 types.text := case when arg1 is not null then parse_variables(arg1) end;
-        i_arg2 types.text := case when arg2 is not null then parse_variables(arg2) end;
-        i_arg3 types.text := case when arg3 is not null then parse_variables(arg3) end;
     begin
         case property_name
         ------------------------------------------------------------------------------------------------------------------------ < data_integration.check_not_null
-            when 'data_integration.check_not_null.column_name' then
-                property_value := i_arg1;
             when 'data_integration.check_not_null.work_table_name' then
                 check_work_table(i_arg1);
                 property_value := i_arg1;
-        ------------------------------------------------------------------------------------------------------------------------ < data_integration.check_primary_key
-            when 'data_integration.check_primary_key.columns_name' then
+            when 'data_integration.check_not_null.column_name' then
                 property_value := i_arg1;
+        ------------------------------------------------------------------------------------------------------------------------ < data_integration.check_primary_key
             when 'data_integration.check_primary_key.work_table_name' then
                 check_work_table(i_arg1);
                 property_value := i_arg1;
-        ------------------------------------------------------------------------------------------------------------------------ < data_integration.check_unique_key
-            when 'data_integration.check_unique_key.columns_name' then
+            when 'data_integration.check_primary_key.columns_name' then
                 property_value := i_arg1;
+        ------------------------------------------------------------------------------------------------------------------------ < data_integration.check_unique_key
             when 'data_integration.check_unique_key.work_table_name' then
                 check_work_table(i_arg1);
                 property_value := i_arg1;
+            when 'data_integration.check_unique_key.columns_name' then
+                property_value := i_arg1;
         ------------------------------------------------------------------------------------------------------------------------ < data_integration.control_append
-            when 'data_integration.control_append.{analyze_partition_clause}' then
-                option_value := get_option('partition name', i_arg1);
-                property_value := case when option_value is not null then 'partname => ''' || option_value || ''',' end;
-            when 'data_integration.control_append.{partition_clause}' then
-                option_value := get_option('partition name', i_arg1);
-                property_value := case when option_value is not null then 'partition (' || option_value || ')' end;
-            when 'data_integration.control_append.{target_table_owner_name}' then
-                property_value := regexp_substr(i_arg1, '[^\.]+', 1, 1);
-            when 'data_integration.control_append.{target_table_short_name}' then
-                property_value := regexp_substr(i_arg1, '[^\.]+', 1, 2);
-            when 'data_integration.control_append.{work_table_columns}' then
-                property_value := get_column_list('out.' || i_arg1, '', 'column_name', ',\n\t\t\t\t', '');
+            when 'data_integration.control_append.target_table_name' then
+                property_value := i_arg1;
+            when 'data_integration.control_append.work_table_name' then
+                check_work_table(i_arg1);
+                property_value := i_arg1;
             when 'data_integration.control_append.(options).partition_name' then
                 option_value := get_option('partition name', i_arg1);
+                property_value := option_value;
+            when 'data_integration.control_append.(options).partition_value' then
+                option_value := get_option('partition value', i_arg1);
                 property_value := option_value;
             when 'data_integration.control_append.(options).truncate_partition' then
                 option_value := get_option('truncate partition', i_arg1, 'false');
@@ -306,73 +301,70 @@ create or replace package body out.core is
                         property_value := 'true';
                 end case;
             when 'data_integration.control_append.(options).truncate_table' then
-                option_value := get_option('truncate table', i_arg1, 'true');
+                option_value := get_option('truncate table', i_arg1, 'false');
                 case option_value
                     when 'false' then
                         property_value := 'false';
                     when 'true' then
                         property_value := 'true';
                 end case;
-            when 'data_integration.control_append.target_table_name' then
-                property_value := i_arg1;
-            when 'data_integration.control_append.work_table_name' then
-                check_work_table(i_arg1);
-                property_value := i_arg1;
+            when 'data_integration.control_append.{analyze_partition_clause}' then
+                if isset('data_integration.control_append.<partition_name>') then
+                    property_value := 'partname => ''' || get('data_integration.control_append.<partition_name>') || ''',';
+                end if;
+            when 'data_integration.control_append.<partition_name>' then
+                if isset('data_integration.control_append.(options).partition_name') then
+                    property_value := get('data_integration.control_append.(options).partition_name');
+                else
+                    if isset('data_integration.control_append.(options).partition_value') then
+                        declare
+                            exists_partition number;
+                            partition_name all_tab_partitions.partition_name%type;
+                            partition_value all_tab_partitions.high_value%type;
+                        begin
+                            select 'out$_' || to_char(systimestamp, 'yyyymmddhh24missff6') || '_' || to_char(ora_hash(get('data_integration.control_append.(options).partition_value'))) into partition_name from dual;
+                            for c in (select partition_name, high_value from all_tab_partitions where lower(table_owner || '.' || table_name) = get('data_integration.control_append.target_table_name') order by partition_position) loop
+                                partition_value := c.high_value;
+                                execute immediate 'select case when ' || get('data_integration.control_append.(options).partition_value') || ' = ' || partition_value || ' then 1 else 0 end from dual' into exists_partition;
+                                if exists_partition = 1 then
+                                    partition_name := c.partition_name;
+                                    exit;
+                                end if;
+                            end loop;
+                            property_value := lower(partition_name);
+                        end;
+                    end if;
+                end if;
+            when 'data_integration.control_append.{partition_clause}' then
+                if isset('data_integration.control_append.<partition_name>') then
+                    property_value := 'partition (' || get('data_integration.control_append.<partition_name>') || ')';
+                end if;
+            when 'data_integration.control_append.{target_table_owner_name}' then
+                property_value := regexp_substr(get('data_integration.control_append.target_table_name'), '[^\.]+', 1, 1);
+            when 'data_integration.control_append.{target_table_short_name}' then
+                property_value := regexp_substr(get('data_integration.control_append.target_table_name'), '[^\.]+', 1, 2);
+            when 'data_integration.control_append.{work_table_columns}' then
+                property_value := get_column_list(
+                                      table_name => 'out.' || get('data_integration.control_append.work_table_name'),
+                                      pattern => 'column_name',
+                                      separator => ',\n\t\t\t\t'
+                                  );
         ------------------------------------------------------------------------------------------------------------------------ < data_integration.create_table
-            when 'data_integration.create_table.statement' then
-                property_value := i_arg1;
             when 'data_integration.create_table.work_table_name' then
                 check_work_table(i_arg1);
+                property_value := i_arg1;
+            when 'data_integration.create_table.statement' then
                 property_value := i_arg1;
         ------------------------------------------------------------------------------------------------------------------------ < data_integration.drop_table
             when 'data_integration.drop_table.work_table_name' then
                 check_work_table(i_arg1);
                 property_value := i_arg1;
         ------------------------------------------------------------------------------------------------------------------------ < data_integration.incremental_update
-            when 'data_integration.incremental_update.{analyze_partition_clause}' then
-                option_value := get_option('partition name', i_arg1);
-                property_value := case when option_value is not null then 'partname => ''' || option_value || ''',' end;
-            when 'data_integration.incremental_update.{interation_01_columns}' then
-                property_value := get_column_list(i_arg2, '', 'w.column_name', ',\n\t\t\t\t', '', get_option('natural key', i_arg1));
-            when 'data_integration.incremental_update.{interation_01_join}' then
-                property_value := get_column_list(i_arg2, '', 'w.column_name = t.column_name', ' and\n\t\t\t\t', '', get_option('natural key', i_arg1));
-            when 'data_integration.incremental_update.{interation_02_columns}' then
-                property_value := get_column_list(i_arg2, '', 'nvl(i01.column_name, t.column_name) column_name', ',\n\t\t\t\t', '', get_option('natural key', i_arg1));
-            when 'data_integration.incremental_update.{interation_02_join}' then
-                property_value := get_column_list(i_arg2, '', 'i01.column_name = t.column_name', ' and\n\t\t\t\t', '', get_option('natural key', i_arg1));
-            when 'data_integration.incremental_update.{interation_03_01_columns}' then
-                property_value := get_column_list('out.' || i_arg2, '', 'nvl(w.column_name, t.column_name) column_name', ',\n\t\t\t\t', '', null, get_option('natural key', i_arg1));
-            when 'data_integration.incremental_update.{interation_03_01_join_01}' then
-                property_value := get_column_list(i_arg2, '', 'i02.column_name = w.column_name', ' and\n\t\t\t\t', '', get_option('natural key', i_arg1));
-            when 'data_integration.incremental_update.{interation_03_01_join_02}' then
-                property_value := get_column_list(i_arg2, '', 'i02.column_name = t.column_name', ' and\n\t\t\t\t', '', get_option('natural key', i_arg1));
-            when 'data_integration.incremental_update.{interation_03_01_natural_key_columns}' then
-                property_value := get_column_list(i_arg2, '', 'i02.column_name', ',\n\t\t\t\t', '', get_option('natural key', i_arg1));
-            when 'data_integration.incremental_update.{interation_03_02_columns}' then
-                property_value := get_column_list('out.' || i_arg1, '', 'nvl(w.column_name, t.column_name) column_name', ',\n\t\t\t\t', '');
-            when 'data_integration.incremental_update.{interation_03_02_join}' then
-                property_value := get_column_list(i_arg2, '', 'w.column_name = t.column_name', ' and\n\t\t\t\t', '', get_option('natural key', i_arg1));
-            when 'data_integration.incremental_update.{interation_03_target_only_columns}' then
-                property_value := get_column_list(i_arg2, ', ', 't.column_name', ',\n\t\t\t\t', '', null, get_column_list('out.' || i_arg3, '', 'column_name', ',', ',') || get_option('surrogate key', i_arg1, '#'));
-            when 'data_integration.incremental_update.{interation_table_base_name}' then
-                property_value := substr('out$_' || regexp_substr(i_arg1, '[^\.]+', 1, 2), 1, 128 - 3);
-            when 'data_integration.incremental_update.{merge_condition}' then
-                property_value := get_column_list(i_arg2, '', 't.column_name = i03.column_name', ' and\n\t\t\t\t\t', '', get_option('natural key', i_arg1));
-            when 'data_integration.incremental_update.{merge_insert_columns}' then
-                property_value := get_column_list(i_arg1, '', 'i03.column_name', ',\n\t\t\t\t\t\t', '');
-            when 'data_integration.incremental_update.{merge_target_table_columns}' then
-                property_value := get_column_list(i_arg1, '', 't.column_name', ',\n\t\t\t\t\t\t', '');
-            when 'data_integration.incremental_update.{merge_update_clause}' then
-                property_value := get_column_list(i_arg2, 'when matched then\n\t\t\t\t\tupdate set\n\t\t\t\t\t\t', 't.column_name = i03.column_name', ',\n\t\t\t\t\t\t', '', null, get_option('natural key', i_arg1));
-            when 'data_integration.incremental_update.{partition_clause}' then
-                option_value := get_option('partition name', i_arg1);
-                property_value := case when option_value is not null then 'partition (' || option_value || ')' end;
-            when 'data_integration.incremental_update.{target_table_columns}' then
-                property_value := get_column_list(i_arg1, '', 'column_name', ',\n\t\t\t\t', '');
-            when 'data_integration.incremental_update.{target_table_owner_name}' then
-                property_value := regexp_substr(i_arg1, '[^\.]+', 1, 1);
-            when 'data_integration.incremental_update.{target_table_short_name}' then
-                property_value := regexp_substr(i_arg1, '[^\.]+', 1, 2);
+            when 'data_integration.incremental_update.target_table_name' then
+                property_value := i_arg1;
+            when 'data_integration.incremental_update.work_table_name' then
+                check_work_table(i_arg1);
+                property_value := i_arg1;
             when 'data_integration.incremental_update.(options).method' then
                 option_value := get_option('method', i_arg1, 'full join');
                 case option_value
@@ -394,12 +386,140 @@ create or replace package body out.core is
             when 'data_integration.incremental_update.(options).surrogate_key' then
                 option_value := get_option('surrogate key', i_arg1);
                 property_value := case when option_value is not null then option_value end;
-            when 'data_integration.incremental_update.target_table_name' then
-                property_value := i_arg1;
-            when 'data_integration.incremental_update.work_table_name' then
-                check_work_table(i_arg1);
-                property_value := i_arg1;
+            when 'data_integration.incremental_update.{analyze_partition_clause}' then
+                if isset('data_integration.incremental_update.(options).partition_name') then
+                    property_value := 'partname => ''' || get('data_integration.incremental_update.(options).partition_name') || ''',';
+                end if;
+            when 'data_integration.incremental_update.{interation_01_columns}' then
+                property_value := get_column_list(
+                                      table_name => get('data_integration.incremental_update.target_table_name'),
+                                      pattern => 'w.column_name',
+                                      separator => ',\n\t\t\t\t',
+                                      column_list_in => get('data_integration.incremental_update.(options).natural_key')
+                                  );
+            when 'data_integration.incremental_update.{interation_01_join}' then
+                property_value := get_column_list(
+                                      table_name => get('data_integration.incremental_update.target_table_name'),
+                                      pattern => 'w.column_name = t.column_name',
+                                      separator => ' and\n\t\t\t\t',
+                                      column_list_in => get('data_integration.incremental_update.(options).natural_key')
+                                  );
+            when 'data_integration.incremental_update.{interation_02_columns}' then
+                property_value := get_column_list(
+                                      table_name => get('data_integration.incremental_update.target_table_name'),
+                                      pattern => 'nvl(i01.column_name, t.column_name) column_name',
+                                      separator => ',\n\t\t\t\t',
+                                      column_list_in => get('data_integration.incremental_update.(options).natural_key')
+                                  );
+            when 'data_integration.incremental_update.{interation_02_join}' then
+                property_value := get_column_list(
+                                      table_name => get('data_integration.incremental_update.target_table_name'),
+                                      pattern => 'i01.column_name = t.column_name',
+                                      separator => ' and\n\t\t\t\t',
+                                      column_list_in => get('data_integration.incremental_update.(options).natural_key')
+                                  );
+            when 'data_integration.incremental_update.{interation_03_01_columns}' then
+                property_value := get_column_list(
+                                      table_name => 'out.' || get('data_integration.incremental_update.work_table_name'),
+                                      pattern => 'nvl(w.column_name, t.column_name) column_name',
+                                      separator => ',\n\t\t\t\t',
+                                      column_list_not_in => get('data_integration.incremental_update.(options).natural_key')
+                                  );
+            when 'data_integration.incremental_update.{interation_03_01_join_01}' then
+                property_value := get_column_list(
+                                      table_name => get('data_integration.incremental_update.target_table_name'),
+                                      pattern => 'i02.column_name = w.column_name',
+                                      separator => ' and\n\t\t\t\t',
+                                      column_list_in => get('data_integration.incremental_update.(options).natural_key')
+                                  );
+            when 'data_integration.incremental_update.{interation_03_01_join_02}' then
+                property_value := get_column_list(
+                                      table_name => get('data_integration.incremental_update.target_table_name'),
+                                      pattern => 'i02.column_name = t.column_name',
+                                      separator => ' and\n\t\t\t\t',
+                                      column_list_in => get('data_integration.incremental_update.(options).natural_key')
+                                  );
+            when 'data_integration.incremental_update.{interation_03_01_natural_key_columns}' then
+                property_value := get_column_list(
+                                      table_name => get('data_integration.incremental_update.target_table_name'),
+                                      pattern => 'i02.column_name',
+                                      separator => ',\n\t\t\t\t',
+                                      column_list_in => get('data_integration.incremental_update.(options).natural_key')
+                                  );
+            when 'data_integration.incremental_update.{interation_03_02_columns}' then
+                property_value := get_column_list(
+                                      table_name => 'out.' || get('data_integration.incremental_update.work_table_name'),
+                                      pattern => 'nvl(w.column_name, t.column_name) column_name',
+                                      separator => ',\n\t\t\t\t'
+                                  );
+            when 'data_integration.incremental_update.{interation_03_02_join}' then
+                property_value := get_column_list(
+                                      table_name => get('data_integration.incremental_update.target_table_name'),
+                                      pattern => 'w.column_name = t.column_name',
+                                      separator => ' and\n\t\t\t\t',
+                                      column_list_in => get('data_integration.incremental_update.(options).natural_key')
+                                  );
+            when 'data_integration.incremental_update.{interation_03_target_only_columns}' then
+                property_value := get_column_list(
+                                      table_name => get('data_integration.incremental_update.target_table_name'),
+                                      start_text => ', ',
+                                      pattern => 't.column_name',
+                                      separator => ',\n\t\t\t\t',
+                                      column_list_not_in => get_column_list(
+                                                                table_name => 'out.' || get('data_integration.incremental_update.work_table_name'),
+                                                                pattern => 'column_name',
+                                                                separator => ',',
+                                                                end_text => ',' || nvl(get('data_integration.incremental_update.(options).surrogate_key'), '#')
+                                                            )
+                                  );
+            when 'data_integration.incremental_update.{interation_table_base_name}' then
+                property_value := 'out$_' || regexp_substr(get('data_integration.incremental_update.target_table_name'), '[^\.]+', 1, 2);
+            when 'data_integration.incremental_update.{merge_condition}' then
+                property_value := get_column_list(
+                                      table_name => get('data_integration.incremental_update.target_table_name'),
+                                      pattern => 't.column_name = i03.column_name',
+                                      separator => ' and\n\t\t\t\t\t',
+                                      column_list_in => get('data_integration.incremental_update.(options).natural_key')
+                                  );
+            when 'data_integration.incremental_update.{merge_insert_columns}' then
+                property_value := get_column_list(
+                                      table_name => get('data_integration.incremental_update.target_table_name'),
+                                      pattern => 'i03.column_name',
+                                      separator => ',\n\t\t\t\t\t\t'
+                                  );
+            when 'data_integration.incremental_update.{merge_target_table_columns}' then
+                property_value := get_column_list(
+                                      table_name => get('data_integration.incremental_update.target_table_name'),
+                                      pattern => 't.column_name',
+                                      separator => ',\n\t\t\t\t\t\t'
+                                  );
+            when 'data_integration.incremental_update.{merge_update_clause}' then
+                property_value := get_column_list(
+                                      table_name => get('data_integration.incremental_update.target_table_name'),
+                                      start_text => 'when matched then\n\t\t\t\t\tupdate set\n\t\t\t\t\t\t',
+                                      pattern => 't.column_name = i03.column_name',
+                                      separator => ',\n\t\t\t\t\t\t',
+                                      column_list_not_in => get('data_integration.incremental_update.(options).natural_key')
+                                  );
+            when 'data_integration.incremental_update.{partition_clause}' then
+                if isset('data_integration.incremental_update.(options).partition_name') then
+                    property_value := 'partition (' || get('data_integration.incremental_update.(options).partition_name') || ')';
+                end if;
+            when 'data_integration.incremental_update.{target_table_columns}' then
+                property_value := get_column_list(
+                                      table_name => get('data_integration.incremental_update.target_table_name'),
+                                      pattern => 'column_name',
+                                      separator => ',\n\t\t\t\t'
+                                  );
+            when 'data_integration.incremental_update.{target_table_owner_name}' then
+                property_value := regexp_substr(get('data_integration.incremental_update.target_table_name'), '[^\.]+', 1, 1);
+            when 'data_integration.incremental_update.{target_table_short_name}' then
+                property_value := regexp_substr(get('data_integration.incremental_update.target_table_name'), '[^\.]+', 1, 2);
         ------------------------------------------------------------------------------------------------------------------------ < files.copy
+            when 'files.copy.target_filename' then
+                property_value := i_arg1;
+            when 'files.copy.source_filename' then
+                property_value := i_arg1;
             when 'files.copy.(options).recursive' then
                 option_value := get_option('recursive', i_arg1, 'false');
                 case option_value
@@ -408,84 +528,14 @@ create or replace package body out.core is
                     when 'true' then
                         property_value := '-R';
                 end case;
-            when 'files.copy.source_filename' then
-                property_value := i_arg1;
-            when 'files.copy.target_filename' then
-                property_value := i_arg1;
         ------------------------------------------------------------------------------------------------------------------------ < files.load
-            when 'files.load.{directory_name}' then
-                property_value := substr('out$_' || i_arg1, 1, 128);
-            when 'files.load.{directory_path}' then
-                property_value := replace(i_arg1, '/' || regexp_substr(i_arg1, '[^/]+$'));
-            when 'files.load.{external_table_name}' then
-                property_value := 'out$_' || i_arg1;
-            when 'files.load.{external_table_columns}' then
-                
-                declare
-                    line_start number;
-                    line_end number;
-                    line types.text;
-                begin
-                    line_start := 1;
-                    property_value := '';
-                    loop
-                        line_end := nvl(instr(substr(i_arg1 || chr(10), line_start), chr(10)), 0);
-                        exit when line_end = 0;
-                        line := trim(substr(i_arg1, line_start, line_end - 1));
-                        if lower(line) like '% date %' then
-                            line := trim(substr(line, 1, instr(lower(line), ' mask ') - 1));
-                        end if;
-                        if  length(line) > 0 then
-                            property_value := property_value || chr(10) || lpad(' ', 24) || line || ',';
-                        end if;
-                        line_start := line_start + line_end + 1;
-                    end loop;
-                    property_value := trim(rtrim(ltrim(property_value, chr(10)), ','));
-                end;
-            when 'files.load.{external_table_field_list_clause}' then
-                declare
-                    line_start number;
-                    line_end number;
-                    line types.text;
-                begin
-                    line_start := 1;
-                    property_value := '';
-                    loop
-                        line_end := nvl(instr(substr(i_arg1 || chr(10), line_start), chr(10)), 0);
-                        exit when line_end = 0;
-                        line := trim(substr(i_arg1, line_start, line_end - 1));
-                        if lower(line) like '% date %' then
-                            line := trim(replace(line, ' date ', ' char date_format date '));
-                        else
-                            line := trim(substr(line, 1, instr(line, ' ') - 1));
-                        end if;
-                        if  length(line) > 0 then
-                            property_value := property_value || chr(10) || lpad(' ', 32) || line || ',';
-                        end if;
-                        line_start := line_start + line_end + 1;
-                    end loop;
-                    property_value := trim(rtrim(ltrim(property_value, chr(10)), ','));
-                end;
-            when 'files.load.{work_table_columns}' then
-                declare
-                    line_start number;
-                    line_end number;
-                    line types.text;
-                begin
-                    line_start := 1;
-                    property_value := '';
-                    loop
-                        line_end := nvl(instr(substr(i_arg1 || chr(10), line_start), chr(10)), 0);
-                        exit when line_end = 0;
-                        line := trim(substr(i_arg1, line_start, line_end - 1));
-                        line := trim(substr(line, 1, instr(line, ' ') - 1));
-                        if  length(line) > 0 then
-                            property_value := property_value || chr(10) || lpad(' ', 24) || line || ',';
-                        end if;
-                        line_start := line_start + line_end + 1;
-                    end loop;
-                    property_value := trim(rtrim(ltrim(property_value, chr(10)), ','));
-                end;
+            when 'files.load.work_table_name' then
+                check_work_table(i_arg1);
+                property_value := i_arg1;
+            when 'files.load.filename' then
+                property_value := i_arg1;
+            when 'files.load.attributes' then
+                property_value := i_arg1;
             when 'files.load.(options).file_format' then
                 option_value := get_option('file format', i_arg1, 'delimited');
                 case option_value
@@ -506,17 +556,88 @@ create or replace package body out.core is
             when 'files.load.(options).text_delimiter' then
                 option_value := get_option('text delimiter', i_arg1);
                 property_value := case when option_value is not null then 'optionally enclosed by ''' || option_value || '''' end;
-            when 'files.load.filename' then
-                property_value := regexp_substr(i_arg1, '[^/]+$');
-            when 'files.load.work_table_name' then
-                check_work_table(i_arg1);
-                property_value := i_arg1;
+            when 'files.load.{directory_name}' then
+                property_value := 'out$_' || get('files.load.work_table_name');
+            when 'files.load.{directory_path}' then
+                property_value := replace(get('files.load.filename'), '/' || regexp_substr(get('files.load.filename'), '[^/]+$'));
+            when 'files.load.{external_table_name}' then
+                property_value := 'out$_' || get('files.load.work_table_name');
+            when 'files.load.{external_table_columns}' then
+                declare
+                    line_start number;
+                    line_end number;
+                    line types.text;
+                begin
+                    line_start := 1;
+                    property_value := '';
+                    loop
+                        line_end := nvl(instr(substr(get('files.load.attributes') || chr(10), line_start), chr(10)), 0);
+                        exit when line_end = 0;
+                        line := trim(substr(get('files.load.attributes'), line_start, line_end - 1));
+                        if lower(line) like '% date %' then
+                            line := trim(substr(line, 1, instr(lower(line), ' mask ') - 1));
+                        end if;
+                        if  length(line) > 0 then
+                            property_value := property_value || chr(10) || lpad(' ', 24) || line || ',';
+                        end if;
+                        line_start := line_start + line_end + 1;
+                    end loop;
+                    property_value := trim(rtrim(ltrim(property_value, chr(10)), ','));
+                end;
+            when 'files.load.{external_table_field_list_clause}' then
+                declare
+                    line_start number;
+                    line_end number;
+                    line types.text;
+                begin
+                    line_start := 1;
+                    property_value := '';
+                    loop
+                        line_end := nvl(instr(substr(get('files.load.attributes') || chr(10), line_start), chr(10)), 0);
+                        exit when line_end = 0;
+                        line := trim(substr(get('files.load.attributes'), line_start, line_end - 1));
+                        if lower(line) like '% date %' then
+                            line := trim(replace(line, ' date ', ' char date_format date '));
+                        else
+                            line := trim(substr(line, 1, instr(line, ' ') - 1));
+                        end if;
+                        if  length(line) > 0 then
+                            property_value := property_value || chr(10) || lpad(' ', 32) || line || ',';
+                        end if;
+                        line_start := line_start + line_end + 1;
+                    end loop;
+                    property_value := trim(rtrim(ltrim(property_value, chr(10)), ','));
+                end;
+            when 'files.load.{file_basename}' then
+                property_value := regexp_substr(get('files.load.filename'), '[^/]+$');
+            when 'files.load.{work_table_columns}' then
+                declare
+                    line_start number;
+                    line_end number;
+                    line types.text;
+                begin
+                    line_start := 1;
+                    property_value := '';
+                    loop
+                        line_end := nvl(instr(substr(get('files.load.attributes') || chr(10), line_start), chr(10)), 0);
+                        exit when line_end = 0;
+                        line := trim(substr(get('files.load.attributes'), line_start, line_end - 1));
+                        line := trim(substr(line, 1, instr(line, ' ') - 1));
+                        if  length(line) > 0 then
+                            property_value := property_value || chr(10) || lpad(' ', 24) || line || ',';
+                        end if;
+                        line_start := line_start + line_end + 1;
+                    end loop;
+                    property_value := trim(rtrim(ltrim(property_value, chr(10)), ','));
+                end;
         ------------------------------------------------------------------------------------------------------------------------ < files.move
-            when 'files.move.source_filename' then
-                property_value := i_arg1;
             when 'files.move.target_filename' then
                 property_value := i_arg1;
+            when 'files.move.source_filename' then
+                property_value := i_arg1;
         ------------------------------------------------------------------------------------------------------------------------ < files.remove
+            when 'files.remove.filename' then
+                property_value := i_arg1;
             when 'files.remove.(options).force' then
                 option_value := get_option('force', i_arg1, 'false');
                 case option_value
@@ -533,15 +654,12 @@ create or replace package body out.core is
                     when 'true' then
                         property_value := '-r';
                 end case;
-            when 'files.remove.filename' then
-                property_value := i_arg1;
         ------------------------------------------------------------------------------------------------------------------------ < files.unload
-            when 'files.unload.{directory_name}' then
-                property_value := substr('out$_' || regexp_replace(regexp_substr(regexp_substr(i_arg1, '[^/]+$'), '[^\.]+', 1, 1), '[^a-zA-Z0-9]+'), 1, 128);
-            when 'files.unload.{directory_path}' then
-                property_value := replace(i_arg1, '/' || regexp_substr(i_arg1, '[^/]+$'));
-            when 'files.unload.{nls_date_format}' then
-                property_value := sys_context('userenv', 'nls_date_format');
+            when 'files.unload.filename' then
+                property_value := i_arg1;
+            when 'files.unload.work_table_name' then
+                check_work_table(i_arg1);
+                property_value := i_arg1;
             when 'files.unload.(options).date_format' then
                 option_value := get_option('date format', i_arg1, 'yyyy/mm/dd hh24:mi:ss');
                 property_value := option_value;
@@ -568,29 +686,36 @@ create or replace package body out.core is
             when 'files.unload.(options).text_delimiter' then
                 option_value := get_option('text delimiter', i_arg1);
                 property_value := option_value;
-            when 'files.unload.filename' then
-                property_value := i_arg1;
-            when 'files.unload.work_table_name' then
-                check_work_table(i_arg1);
-                property_value := i_arg1;
+            when 'files.unload.{directory_name}' then
+                property_value := substr('out$_' || regexp_replace(regexp_substr(regexp_substr(get('files.unload.filename'), '[^/]+$'), '[^\.]+', 1, 1), '[^a-zA-Z0-9]+'), 1, 128);
+            when 'files.unload.{directory_path}' then
+                property_value := replace(get('files.unload.filename'), '/' || regexp_substr(get('files.unload.filename'), '[^/]+$'));
+            when 'files.unload.{file_basename}' then
+                property_value := regexp_substr(get('files.unload.filename'), '[^/]+$');
+            when 'files.unload.{nls_date_format}' then
+                property_value := sys_context('userenv', 'nls_date_format');
         ------------------------------------------------------------------------------------------------------------------------ < files.unzip
+            when 'files.unzip.directory_name' then
+                property_value := i_arg1;
+            when 'files.unzip.archive_name' then
+                property_value := i_arg1;
             when 'files.unzip.(options).keep_input_files' then
                 option_value := get_option('keep input files', i_arg1, 'false');
                 property_value := option_value;
             when 'files.unzip.(options).password' then
                 option_value := get_option('password', i_arg1);
                 property_value := case when option_value is not null then '-P ' || option_value end;
-            when 'files.unzip.archive_name' then
-                property_value := i_arg1;
-            when 'files.unzip.directory_name' then
-                property_value := i_arg1;
         ------------------------------------------------------------------------------------------------------------------------ < files.wait
+            when 'files.wait.filename' then
+                property_value := i_arg1;
             when 'files.wait.(options).polling_interval' then
                 option_value := get_option('polling interval', i_arg1, '60');
                 property_value := option_value;
-            when 'files.wait.filename' then
-                property_value := i_arg1;
         ------------------------------------------------------------------------------------------------------------------------ < files.zip
+            when 'files.zip.archive_name' then
+                property_value := i_arg1;
+            when 'files.zip.filename' then
+                property_value := i_arg1;
             when 'files.zip.(options).compress_level' then
                 option_value := get_option('compress level', i_arg1, '6');
                 property_value := '-' || option_value;
@@ -613,10 +738,6 @@ create or replace package body out.core is
                     when 'true' then
                         property_value := '-r';
                 end case;
-            when 'files.zip.archive_name' then
-                property_value := i_arg1;
-            when 'files.zip.filename' then
-                property_value := i_arg1;
         ------------------------------------------------------------------------------------------------------------------------ < internet.http_get
             when 'internet.http_get.filename' then
                 property_value := i_arg1;

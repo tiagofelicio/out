@@ -52,19 +52,27 @@ create or replace package metadata.api authid current_user is
     -- out.data_integration.control_append
     --    | usage :
     --    |         out.data_integration.control_append('schema.target_table', 'work_table', q'[
-    --    |             partition name => 
-    --    |             truncate partition => 
-    --    |             truncate table => 
+    --    |             partition name => (name, ex: p_1)
+    --    |                                   -> force a insert into partition
+    --    |             partition value => (expression, ex: to_date('20200101', 'yyyymmdd'))
+    --    |                                   -> if partition name option is provided, it will create the partition with that name
+    --    |                                   -> if partition name option is not provided the framework will generate a name for the partition
+    --    |             truncate partition => (true / false)
+    --    |                                   -> set to true if partition name need to be truncated before the insert. 
+    --    |             truncate table => (true / false)
+    --    |                                   -> set to true if target table needs to be truncated
     --    |         ]')
     --    | 
     -- out.data_integration.incremental_update
     --    | usage :
     --    |         out.data_integration.incremental_update('schema.target_table', 'work_table', q'[
     --    |             method => (full join / merge)
-    --    |             natural key => 
-    --    |             partition name => 
-    --    |             surrogate key => 
-    --    |         ]')       
+    --    |                                   -> default option is full join
+    --    |             natural key => (columns, ex: nk1, nk2)
+    --    |             partition name => (name, ex: p_1)
+    --    |                                   -> force a incremental update into partition
+    --    |             surrogate key => (column, ex: sk)
+    --    |         ]')
     --    | 
     -- out.files.copy
     --    | usage :
