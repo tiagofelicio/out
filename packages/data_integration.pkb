@@ -97,34 +97,34 @@ create or replace package body out.data_integration is
             logger.session_step('error', sqlerrm);
     end drop_table;
 
-    procedure control_append(target_table_name varchar2, work_table_name varchar2, options varchar2 default null) is
+    procedure append(target_table_name varchar2, work_table_name varchar2, options varchar2 default null) is
         statements types.statements;
     begin
         logger.session_step('start');
         statements(1).plsql.code := q'[
-            truncate table $data_integration.control_append.target_table_name drop storage
+            truncate table $data_integration.append.target_table_name drop storage
         ]';
         statements(2).ignore_error := -14312;
         statements(2).plsql.code := q'[
-            alter table $data_integration.control_append.target_table_name add partition $data_integration.control_append.<partition_name> values ($data_integration.control_append.(options).partition_value)
+            alter table $data_integration.append.target_table_name add partition $data_integration.append.<partition_name> values ($data_integration.append.(options).partition_value)
         ]';
         statements(3).plsql.code := q'[
-            alter table $data_integration.control_append.target_table_name truncate partition $data_integration.control_append.<partition_name> drop storage
+            alter table $data_integration.append.target_table_name truncate partition $data_integration.append.<partition_name> drop storage
         ]';
         statements(4).plsql.code := q'[
-            insert /*+ append parallel */ into $data_integration.control_append.target_table_name $data_integration.control_append.{partition_clause} nologging (
-                $data_integration.control_append.{work_table_columns}
+            insert /*+ append parallel */ into $data_integration.append.target_table_name $data_integration.append.{partition_clause} nologging (
+                $data_integration.append.{work_table_columns}
             )
             select
-                $data_integration.control_append.{work_table_columns}
-            from $data_integration.control_append.work_table_name
+                $data_integration.append.{work_table_columns}
+            from $data_integration.append.work_table_name
         ]';
         statements(5).plsql.code := q'[
             begin
                 dbms_stats.gather_table_stats(
-                    ownname => '$data_integration.control_append.{target_table_owner_name}',
-                    tabname => '$data_integration.control_append.{target_table_short_name}',
-                    $data_integration.control_append.{analyze_partition_clause}
+                    ownname => '$data_integration.append.{target_table_owner_name}',
+                    tabname => '$data_integration.append.{target_table_short_name}',
+                    $data_integration.append.{analyze_partition_clause}
                     estimate_percent => dbms_stats.auto_sample_size,
                     method_opt => 'for all columns size auto',
                     degree => dbms_stats.auto_degree,
@@ -134,27 +134,27 @@ create or replace package body out.data_integration is
                 );
             end;
         ]';
-        core.set('data_integration.control_append.target_table_name', target_table_name);
-        core.set('data_integration.control_append.work_table_name', work_table_name);
-        core.set('data_integration.control_append.(options).partition_name', options);
-        core.set('data_integration.control_append.(options).partition_value', options);
-        core.set('data_integration.control_append.(options).truncate_partition', options);
-        core.set('data_integration.control_append.(options).truncate_table', options);
-        core.set('data_integration.control_append.<partition_name>');
-        core.set('data_integration.control_append.{analyze_partition_clause}');
-        core.set('data_integration.control_append.{partition_clause}');
-        core.set('data_integration.control_append.{target_table_owner_name}');
-        core.set('data_integration.control_append.{target_table_short_name}');
-        core.set('data_integration.control_append.{work_table_columns}');
-        statements(1).execute := types.to_boolean(core.get('data_integration.control_append.(options).truncate_table'));
-        statements(2).execute := core.isset('data_integration.control_append.(options).partition_value');
-        statements(3).execute := types.to_boolean(core.get('data_integration.control_append.(options).truncate_partition'));
+        core.set('data_integration.append.target_table_name', target_table_name);
+        core.set('data_integration.append.work_table_name', work_table_name);
+        core.set('data_integration.append.(options).partition_name', options);
+        core.set('data_integration.append.(options).partition_value', options);
+        core.set('data_integration.append.(options).truncate_partition', options);
+        core.set('data_integration.append.(options).truncate_table', options);
+        core.set('data_integration.append.<partition_name>');
+        core.set('data_integration.append.{analyze_partition_clause}');
+        core.set('data_integration.append.{partition_clause}');
+        core.set('data_integration.append.{target_table_owner_name}');
+        core.set('data_integration.append.{target_table_short_name}');
+        core.set('data_integration.append.{work_table_columns}');
+        statements(1).execute := types.to_boolean(core.get('data_integration.append.(options).truncate_table'));
+        statements(2).execute := core.isset('data_integration.append.(options).partition_value');
+        statements(3).execute := types.to_boolean(core.get('data_integration.append.(options).truncate_partition'));
         core.execute(statements);
         logger.session_step('done');
     exception
         when others then
             logger.session_step('error', sqlerrm);
-    end control_append;
+    end append;
 
     procedure incremental_update(target_table_name varchar2, work_table_name varchar2, options varchar2) is
         statements types.statements;

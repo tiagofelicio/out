@@ -141,7 +141,7 @@ create or replace package body metadata.dhub is
                 '#dh_library/#dh_resource' resource_name
             from dh_country_codes_01
         ]');
-        out.data_integration.control_append('dhub.dh_country_codes', 'dh_country_codes', q'[
+        out.data_integration.append('dhub.dh_country_codes', 'dh_country_codes', q'[
             truncate table => true
         ]');
         out.files.remove('#landing_zone/#dh_resource.csv');
@@ -184,7 +184,7 @@ create or replace package body metadata.dhub is
                 '#dh_library/#dh_resource' resource_name
             from dh_covid_19_01
         ]');
-        out.data_integration.control_append('dhub.dh_covid_19', 'dh_covid_19', q'[
+        out.data_integration.append('dhub.dh_covid_19', 'dh_covid_19', q'[
             truncate table => true
         ]');
         out.files.remove('#landing_zone/#dh_resource.csv');
@@ -229,7 +229,7 @@ create or replace package body metadata.dhub is
                 '#dh_library/#dh_resource' resource_name
             from dh_currency_codes_01
         ]');
-        out.data_integration.control_append('dhub.dh_currency_codes', 'dh_currency_codes', q'[
+        out.data_integration.append('dhub.dh_currency_codes', 'dh_currency_codes', q'[
             truncate table => true
         ]');
         out.files.remove('#landing_zone/#dh_resource.csv');
@@ -268,7 +268,7 @@ create or replace package body metadata.dhub is
                 '#dh_library/#dh_resource' resource_name
             from dh_us_euro_foreign_exchange_rate_01
         ]');
-        out.data_integration.control_append('dhub.dh_us_euro_foreign_exchange_rate', 'dh_us_euro_foreign_exchange_rate', q'[
+        out.data_integration.append('dhub.dh_us_euro_foreign_exchange_rate', 'dh_us_euro_foreign_exchange_rate', q'[
             truncate table => true
         ]');
         out.files.remove('#landing_zone/#dh_resource.csv');

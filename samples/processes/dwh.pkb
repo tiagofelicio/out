@@ -122,7 +122,7 @@ create or replace package body metadata.dwh is
                 covid_19_history_04.country_id = covid_19_history_05.country_id
         ]');
         out.data_integration.check_primary_key('covid_19_history', 'country_id');
-        out.data_integration.control_append('dwh.covid_19_history', 'covid_19_history', q'[
+        out.data_integration.append('dwh.covid_19_history', 'covid_19_history', q'[
             partition value => #reference_date
             truncate partition => true
         ]');
@@ -232,7 +232,7 @@ create or replace package body metadata.dwh is
                 exchange_rates_04.exchange_rate_type_code = exchange_rate_types.code
         ]');
         out.data_integration.check_primary_key('exchange_rates', 'from_currency_code, to_currency_code, exchange_rate_type_code');
-        out.data_integration.control_append('dwh.exchange_rates', 'exchange_rates', q'[
+        out.data_integration.append('dwh.exchange_rates', 'exchange_rates', q'[
             partition value => #reference_date
             truncate partition => true
         ]');

@@ -122,7 +122,7 @@ create or replace package body out.logger is
                     insert into session_steps (session_no, no, name, begin, status, error) values (logger.session_no, logger.session_step_no, step_name, sysdate, 'r', empty_clob());
                     commit;
                     mutex_unlock('out$log_session_step');
-                    dbms_application_info.set_action(step_name || ' : ' || to_char(who_called_me_lineno));
+                    dbms_application_info.set_action(step_name);
                     logger.session_step_work := 0;
                 end if;
             when 'done' then

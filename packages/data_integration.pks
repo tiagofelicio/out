@@ -10,7 +10,7 @@ create or replace package out.data_integration authid current_user is
 
     procedure drop_table(work_table_name varchar2);
 
-    procedure control_append(target_table_name varchar2, work_table_name varchar2, options varchar2 default null);
+    procedure append(target_table_name varchar2, work_table_name varchar2, options varchar2 default null);
 
     procedure incremental_update(target_table_name varchar2, work_table_name varchar2, options varchar2);
 

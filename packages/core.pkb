@@ -262,6 +262,75 @@ create or replace package body out.core is
         i_arg1 types.text := case when arg1 is not null then parse_variables(arg1) end;
     begin
         case property_name
+        ------------------------------------------------------------------------------------------------------------------------ < data_integration.append
+            when 'data_integration.append.target_table_name' then
+                property_value := i_arg1;
+            when 'data_integration.append.work_table_name' then
+                check_work_table(i_arg1);
+                property_value := i_arg1;
+            when 'data_integration.append.(options).partition_name' then
+                option_value := get_option('partition name', i_arg1);
+                property_value := option_value;
+            when 'data_integration.append.(options).partition_value' then
+                option_value := get_option('partition value', i_arg1);
+                property_value := option_value;
+            when 'data_integration.append.(options).truncate_partition' then
+                option_value := get_option('truncate partition', i_arg1, 'false');
+                case option_value
+                    when 'false' then
+                        property_value := 'false';
+                    when 'true' then
+                        property_value := 'true';
+                end case;
+            when 'data_integration.append.(options).truncate_table' then
+                option_value := get_option('truncate table', i_arg1, 'false');
+                case option_value
+                    when 'false' then
+                        property_value := 'false';
+                    when 'true' then
+                        property_value := 'true';
+                end case;
+            when 'data_integration.append.{analyze_partition_clause}' then
+                if isset('data_integration.append.<partition_name>') then
+                    property_value := 'partname => ''' || get('data_integration.append.<partition_name>') || ''',';
+                end if;
+            when 'data_integration.append.<partition_name>' then
+                if isset('data_integration.append.(options).partition_name') then
+                    property_value := get('data_integration.append.(options).partition_name');
+                else
+                    if isset('data_integration.append.(options).partition_value') then
+                        declare
+                            exists_partition number;
+                            partition_name all_tab_partitions.partition_name%type;
+                            partition_value all_tab_partitions.high_value%type;
+                        begin
+                            select 'out$_' || to_char(systimestamp, 'yyyymmddhh24missff6') || '_' || to_char(ora_hash(get('data_integration.append.(options).partition_value'))) into partition_name from dual;
+                            for c in (select partition_name, high_value from all_tab_partitions where lower(table_owner || '.' || table_name) = get('data_integration.append.target_table_name') order by partition_position) loop
+                                partition_value := c.high_value;
+                                execute immediate 'select case when ' || get('data_integration.append.(options).partition_value') || ' = ' || partition_value || ' then 1 else 0 end from dual' into exists_partition;
+                                if exists_partition = 1 then
+                                    partition_name := c.partition_name;
+                                    exit;
+                                end if;
+                            end loop;
+                            property_value := lower(partition_name);
+                        end;
+                    end if;
+                end if;
+            when 'data_integration.append.{partition_clause}' then
+                if isset('data_integration.append.<partition_name>') then
+                    property_value := 'partition (' || get('data_integration.append.<partition_name>') || ')';
+                end if;
+            when 'data_integration.append.{target_table_owner_name}' then
+                property_value := regexp_substr(get('data_integration.append.target_table_name'), '[^\.]+', 1, 1);
+            when 'data_integration.append.{target_table_short_name}' then
+                property_value := regexp_substr(get('data_integration.append.target_table_name'), '[^\.]+', 1, 2);
+            when 'data_integration.append.{work_table_columns}' then
+                property_value := get_column_list(
+                                      table_name => 'out.' || get('data_integration.append.work_table_name'),
+                                      pattern => 'column_name',
+                                      separator => ',\n\t\t\t\t'
+                                  );
         ------------------------------------------------------------------------------------------------------------------------ < data_integration.check_not_null
             when 'data_integration.check_not_null.work_table_name' then
                 check_work_table(i_arg1);
@@ -280,75 +349,6 @@ create or replace package body out.core is
                 property_value := i_arg1;
             when 'data_integration.check_unique_key.columns_name' then
                 property_value := i_arg1;
-        ------------------------------------------------------------------------------------------------------------------------ < data_integration.control_append
-            when 'data_integration.control_append.target_table_name' then
-                property_value := i_arg1;
-            when 'data_integration.control_append.work_table_name' then
-                check_work_table(i_arg1);
-                property_value := i_arg1;
-            when 'data_integration.control_append.(options).partition_name' then
-                option_value := get_option('partition name', i_arg1);
-                property_value := option_value;
-            when 'data_integration.control_append.(options).partition_value' then
-                option_value := get_option('partition value', i_arg1);
-                property_value := option_value;
-            when 'data_integration.control_append.(options).truncate_partition' then
-                option_value := get_option('truncate partition', i_arg1, 'false');
-                case option_value
-                    when 'false' then
-                        property_value := 'false';
-                    when 'true' then
-                        property_value := 'true';
-                end case;
-            when 'data_integration.control_append.(options).truncate_table' then
-                option_value := get_option('truncate table', i_arg1, 'false');
-                case option_value
-                    when 'false' then
-                        property_value := 'false';
-                    when 'true' then
-                        property_value := 'true';
-                end case;
-            when 'data_integration.control_append.{analyze_partition_clause}' then
-                if isset('data_integration.control_append.<partition_name>') then
-                    property_value := 'partname => ''' || get('data_integration.control_append.<partition_name>') || ''',';
-                end if;
-            when 'data_integration.control_append.<partition_name>' then
-                if isset('data_integration.control_append.(options).partition_name') then
-                    property_value := get('data_integration.control_append.(options).partition_name');
-                else
-                    if isset('data_integration.control_append.(options).partition_value') then
-                        declare
-                            exists_partition number;
-                            partition_name all_tab_partitions.partition_name%type;
-                            partition_value all_tab_partitions.high_value%type;
-                        begin
-                            select 'out$_' || to_char(systimestamp, 'yyyymmddhh24missff6') || '_' || to_char(ora_hash(get('data_integration.control_append.(options).partition_value'))) into partition_name from dual;
-                            for c in (select partition_name, high_value from all_tab_partitions where lower(table_owner || '.' || table_name) = get('data_integration.control_append.target_table_name') order by partition_position) loop
-                                partition_value := c.high_value;
-                                execute immediate 'select case when ' || get('data_integration.control_append.(options).partition_value') || ' = ' || partition_value || ' then 1 else 0 end from dual' into exists_partition;
-                                if exists_partition = 1 then
-                                    partition_name := c.partition_name;
-                                    exit;
-                                end if;
-                            end loop;
-                            property_value := lower(partition_name);
-                        end;
-                    end if;
-                end if;
-            when 'data_integration.control_append.{partition_clause}' then
-                if isset('data_integration.control_append.<partition_name>') then
-                    property_value := 'partition (' || get('data_integration.control_append.<partition_name>') || ')';
-                end if;
-            when 'data_integration.control_append.{target_table_owner_name}' then
-                property_value := regexp_substr(get('data_integration.control_append.target_table_name'), '[^\.]+', 1, 1);
-            when 'data_integration.control_append.{target_table_short_name}' then
-                property_value := regexp_substr(get('data_integration.control_append.target_table_name'), '[^\.]+', 1, 2);
-            when 'data_integration.control_append.{work_table_columns}' then
-                property_value := get_column_list(
-                                      table_name => 'out.' || get('data_integration.control_append.work_table_name'),
-                                      pattern => 'column_name',
-                                      separator => ',\n\t\t\t\t'
-                                  );
         ------------------------------------------------------------------------------------------------------------------------ < data_integration.create_table
             when 'data_integration.create_table.work_table_name' then
                 check_work_table(i_arg1);
