@@ -3,7 +3,7 @@
 -- Author        : tiago felicio
 -- Description   :
 -- Call Syntax   : @install.sql (base-folder) (password) (default-tablespace) (stage-tablespace) (temporary-tablespace)
--- Last Modified : 2020/03/12
+-- Last Modified : 2020/03/24
 -- ----------------------------------------------------------------------------------------------------------------------------
 
 create user out identified by &2
